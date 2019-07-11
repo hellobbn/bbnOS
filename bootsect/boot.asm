@@ -146,8 +146,6 @@ LABEL_STACK:
 TopOfStack              equ     $ - LABEL_STACK - 1
 ; End of [SECTION .gs]
 
-
-
 ; Data Session
 [SECTION .dat]
 BootMessage:            db      "Hello, OS world!"

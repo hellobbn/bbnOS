@@ -12,9 +12,11 @@ SECTIONS
         .s16         : { *(.s16) }
         .s32         : { *(.s32) }
         .gdt         : { *(.gdt) }
+        .data1       : { *(.data1) }
+        .gs          : { *(.gs) }
         .dat         : { *(.dat) }
         .text        : { *(.text)}
 
-        . = 510 + 0x0100;
+/*        . = 510 + 0x0100; */
         .header      : { *(.header) }
 }
