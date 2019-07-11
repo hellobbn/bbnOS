@@ -4,4 +4,7 @@ make clean
 
 # For bootsect
 make                            # For now we only have bootsect
-qemu-system-i386 -fda boot.bin
+sudo mount -o loop floppy_boot.img mntfloppy/
+sudo cp boot.bin mntfloppy/boot.com
+sudo umount mntfloppy
+qemu-system-i386 -fda FLOPPY.img -fdb floppy_boot.img
