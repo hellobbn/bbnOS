@@ -240,6 +240,7 @@ DispReturn:
     ; =================================================
     ; div: divides the 64 bits value accross EDX:EAX by a value.
     ; mul: 
+    ; DispReturn: Display a `Return`
     ; =================================================
     push    eax
     push    ebx
