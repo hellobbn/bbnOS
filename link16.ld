@@ -8,13 +8,13 @@ OUTPUT_ARCH(i386)
 
 SECTIONS
 {
-        . = 0x7C00;
+        . = 0x0100;
         .s16         : { *(.s16) }
         .s32         : { *(.s32) }
         .gdt         : { *(.gdt) }
         .dat         : { *(.dat) }
         .text        : { *(.text)}
 
-        . = 510 + 0x7C00;
+        . = 510 + 0x0100;
         .header      : { *(.header) }
 }
