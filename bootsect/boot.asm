@@ -1,6 +1,6 @@
 ; asmsyntax=nasm
 
-%include    "boot.inc"
+%include    "./boot.inc"
 
 jmp     LABEL_START
 
