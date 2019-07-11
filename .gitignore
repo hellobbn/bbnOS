@@ -3,3 +3,4 @@ boot.bin
 boot.elf
 FLOPPY.img
 floppy_boot.img
+mntfloppy/
