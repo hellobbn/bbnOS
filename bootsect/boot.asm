@@ -12,7 +12,19 @@ LABEL_START:
     mov     es, ax                              ; AX -> ES
     mov     ss, ax                              ; AX -> SS
     mov     sp, 0100h
-    ;call    DispStr                             ; Display "Hello, World"
+
+    mov     [LABEL_GO_BACK_TO_REAL + 3], ax
+    mov     [SPValueInRealMode], sp
+
+    ; Initialize 16-bit Segment Descriptor
+    xor     eax, eax
+    mov     ax, cs                              ; Move with Zero-Extend
+    shl     eax, 4
+    add     eax, LABEL_SEG_CODE16
+    mov     word [LABEL_DESC_CODE16 + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_DESC_CODE16 + 4], al
+    mov     byte [LABEL_DESC_CODE16 + 7], ah
 
     ; Initialize 32-bit Segment Descriptor
     xor     eax, eax                            ; 0 -> EAX
@@ -23,6 +35,26 @@ LABEL_START:
     shr     eax, 16
     mov     byte [LABEL_DESC_CODE32 + 4], al
     mov     byte [LABEL_DESC_CODE32 + 7], ah
+
+    ; Initialize Data Segment Descriptor
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_DATA
+    mov     word [LABEL_DESC_DATA + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_DESC_DATA + 4], al
+    mov     byte [LABEL_DESC_DATA + 7], ah
+
+    ; Initialize Stack Descriptor
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_STACK
+    mov     word [LABEL_DESC_STACK + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_DESC_STACK + 4], al
+    mov     byte [LABEL_DESC_STACK + 7], ah
 
     ; Prepare for loading GDTR
     xor     eax, eax
@@ -48,7 +80,7 @@ LABEL_START:
     mov     cr0, eax
 
     ; Jump INTO Protect Mode
-    jmp     SelectorCode32:0                    ; This will load SelectorCode32 into CS and jump
+    jmp     dword SelectorCode32:0              ; This will load SelectorCode32 into CS and jump
 
     ; Never HERE
     jmp     $                                   ; Infinity Loop
@@ -76,22 +108,154 @@ DispStr:
     int     10h                                     ; Interrupt 10
     ret
 
+LABEL_REAL_ENTRY:
+    mov     ax, cs                                  ; Recover all segment registers
+    mov     ds, ax
+    mov     es, ax
+    mov     ss, ax
+
+    mov     sp, [SPValueInRealMode]                 ; Recover SP
+    in      al, 92h
+    and     al, 11111101b
+    out     92h, al                                 ; Address Line A20
+
+    sti                                             ; Enable Interrupt
+
+    xor     eax, eax
+    mov     ax, 4c00h
+    int     21h                                     ; Return to DOS
 ; End of [SECTION .s16]
 
 [SECTION .s32]
 [BITS    32]
 
 LABEL_SEG_CODE32:
+    mov     ax, SelectorData
+    mov     ds, ax                                  ; Data Selector
+    mov     ax, SelectorTest
+    mov     es, ax                                  ; Test Selector
     mov     ax, SelectorVideo
-    mov     gs, ax
+    mov     gs, ax                                  ; Video Selector
 
-    mov     edi, (80 * 11 + 79) * 2                 ; Screen Column 79, Row 11
-    mov     ah, 0Ch                                 ; 0000: Black Background; 1100: Red Text
-    mov     al, 'P'
-    mov     [gs:edi], ax
+    mov     ax, SelectorStack
+    mov     ss, ax                                  ; Stack Selector
 
-    ; Stop HERE
-    jmp     $
+    mov     esp, TopOfStack
+
+    ; Display a String
+    mov     ah, 0Ch                                 ; Black; Red
+    xor     esi, esi                                ; ESI = 0
+    xor     edi, edi                                ; EDI = 0
+    mov     esi, OffsetPMMessage                    ; Message Offset
+    mov     edi, (80 * 10 + 0) * 2                  ; Row 10, Colomn 0
+    cld                                             ; Clear DF Flag, ESI inc
+.1:
+    lodsb                                           ; Load byte at address DS:(E)SI into AL
+    test    al, al
+    jz      .2
+    mov     [gs:edi],   ax
+    add     edi, 2
+    jmp     .1
+.2:         ; End of Display
+    call    DispReturn
+
+    call    TestRead
+    call    TestWrite
+    call    TestRead
+
+    ; End Here
+    jmp     SelectorCode16:0
+
+; ----------------------------------------------------
+TestRead:
+    xor     esi, esi                        ; ESI <- 0
+    mov     ecx, 8                          ; Count = 8
+.loop:
+    mov     al, [es:esi]                    ; Test Segment -> AL
+    call    DispAL
+    inc     esi                             ; ESI ++
+    loop    .loop                           ; ECX is count
+
+    call DispReturn
+
+    ret
+; ----------------------------------------------------
+
+; ----------------------------------------------------
+TestWrite:
+    push    esi                             ; Save ESI
+    push    edi                             ; Save EDI
+    xor     esi, esi                        ; ESI = 0
+    xor     edi, edi
+    mov     esi, OffsetStrTest
+    cld
+.1:
+    lodsb
+    test    al, al
+    jz      .2
+    mov     [es:edi], al
+    inc     edi
+    jmp     .1
+.2:
+    pop     edi
+    pop     esi
+
+    ret
+; ----------------------------------------------------
+
+; ----------------------------------------------------
+DispAL:
+    push    ecx
+    push    edx
+
+    mov     ah, 0Ch
+    mov     dl, al
+    shr     al, 4               ; HIGH 4 BIT first
+    mov     ecx, 2              ; Count 2
+.begin:
+    and     al, 01111b
+    cmp     al, 9
+    ja      .1                  ; jump if al >u 9
+    add     al, '0'
+    jmp     .2
+.1:
+    sub     al, 0Ah
+    add     al, 'A'
+.2:
+    mov     [gs:edi], ax        ; Display it
+    add     edi, 2
+
+    mov     al, dl              ; Now for LOW 4 BIT
+    loop    .begin
+    add     edi, 2
+
+    pop     edx
+    pop     ecx
+
+    ret
+; ----------------------------------------------------
+
+; ----------------------------------------------------
+DispReturn:
+    ; =================================================
+    ; div: divides the 64 bits value accross EDX:EAX by a value.
+    ; mul: 
+    ; =================================================
+    push    eax
+    push    ebx
+    mov     eax, edi
+    mov     bl, 160
+    div     bl                          ; EAX / BL
+    and     eax, 0FFh
+    inc     eax
+    mov     bl, 160
+    mul     bl
+    mov     edi, eax
+    pop     ebx
+    pop     eax
+    ret
+; ----------------------------------------------------
+
 
 SegCode32Len        equ         $ - LABEL_SEG_CODE32
 
@@ -148,7 +312,31 @@ TopOfStack              equ     $ - LABEL_STACK - 1
 
 ; Data Session
 [SECTION .dat]
+ALIGN   32
+[BITS   16]
 BootMessage:            db      "Hello, OS world!"
+
+; From Real Mode to Protect Mode
+[SECTION .s16code]
+ALIGN   32
+[BITS   16]
+LABEL_SEG_CODE16:
+    ; Jump to Real Mode
+    mov     ax, SelectorNormal
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
+    mov     ss, ax
+
+    mov     eax, cr0
+    and     al, 11111110b
+    mov     cr0, eax
+
+LABEL_GO_BACK_TO_REAL:
+    jmp     0:LABEL_REAL_ENTRY
+
+Code16Len               equ     $ - LABEL_SEG_CODE16
 
 [SECTION .header]
 dw      0xAA55                                      ; End Sign, BootSectore must start with this
