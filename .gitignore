@@ -2,3 +2,4 @@ boot.bin
 *.o
 boot.elf
 FLOPPY.img
+floppy_boot.img
