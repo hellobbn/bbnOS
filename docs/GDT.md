@@ -126,7 +126,7 @@ __(3)__: Type Table please see `osdev`, (EX/DC/RW/AC)
 
 | Type |             Data / Segment Descriptor             | System / Gate Descriptor |
 |------|:-------------------------------------------------:|:------------------------:|
-|   0  |                     Read Only                     |       <Not Defined>      |
+|   0  |                     Read Only                     |       \<Not Defined>      |
 |   1  |                Read Only, Accessed                |       Usable 286TSS      |
 |   2  |                    Read / Write                   |            LDT           |
 |   3  |               Read / Write, Accessed              |        Busy 286TSS       |
@@ -134,12 +134,12 @@ __(3)__: Type Table please see `osdev`, (EX/DC/RW/AC)
 |   5  |          Read Only, Expend-Down, Accessed         |         Work Gate        |
 |   6  |             Read / Write, Expend-Down             |    286 Interrupt Gate    |
 |   7  |        Read / Write, Expend-Down, Accessed        |       286 Trap Gate      |
-|   8  |                    Execute Only                   |       <Not Defined>      |
+|   8  |                    Execute Only                   |       \<Not Defined>      |
 |   9  |               Execute Only, Accessed              |       Usable 386TSS      |
-|   A  |                   Execute / Read                  |       <Not Defined>      |
+|   A  |                   Execute / Read                  |       \<Not Defined>      |
 |   B  |              Execute / Read, Accessed             |        Busy 386TSS       |
 |   C  |       Execute Only, Conforming Code Segment       |       386 Call Gate      |
-|   D  |  Execute Only, Conforming Code Segment, Accessed  |       <Not Defined>      |
+|   D  |  Execute Only, Conforming Code Segment, Accessed  |       \<Not Defined>      |
 |   E  |      Execute / Read, Conforming Code Segment      |    386 Interrupt Gate    |
 |   F  | Execute / Read, Conforming Code Segment, Accessed |       386 Trap Gate      |
 
