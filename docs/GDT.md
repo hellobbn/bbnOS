@@ -146,3 +146,7 @@ __(3)__: Type Table please see `osdev`, (EX/DC/RW/AC)
 
 
 __(4)__: D/B Bit, please see `osdev`,(Sz?)
+
+- In Executable Code Descriptor: D bit; D = 1 --> 32-bit address, 32-bit or 8-bit operand ; D = 0 --> 16-bit address, 16-bit or 8 bit operand
+- In Expend Down Descriptor: B Bit; B = 1 --> Segment Limit: 4GB; B = 0 --> Segment Limit 64KB
+- In STACK Descriptor: B Bit: B = 1 --> implicit stack accessing instruction(`pop`, `push`, `call`) use 32-bit `esp`. B = 0 --> 16-bit `esp`
