@@ -4,6 +4,9 @@
 
 jmp     LABEL_START
 
+; ==============================================================
+; 16 BIT Section
+; ==============================================================
 [SECTION    .s16]
 [BITS       16]
 LABEL_START:
@@ -56,6 +59,26 @@ LABEL_START:
     mov     byte [LABEL_DESC_STACK + 4], al
     mov     byte [LABEL_DESC_STACK + 7], ah
 
+    ; Initialize LDT
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_LDT
+    mov     word [LABEL_DESC_LDT + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_DESC_LDT + 4], al
+    mov     byte [LABEL_DESC_LDT + 7], ah
+
+    ; Initialize Code A in LDT
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_CODE_A
+    mov     word [LABEL_LDT_DESC_CODEA + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_LDT_DESC_CODEA + 4], al
+    mov     byte [LABEL_LDT_DESC_CODEA + 7], ah
+
     ; Prepare for loading GDTR
     xor     eax, eax
     mov     ax, ds
@@ -85,9 +108,9 @@ LABEL_START:
     ; Never HERE
     jmp     $                                   ; Infinity Loop
 
-; =================================================
+; ------------------------------------------------
 ; DispStr: Calling INT 0x10 to Display Hello World
-; =================================================
+; ------------------------------------------------
 ; INT 10H: 
 ;       - AH = 13H: Write String, 
 ;       - AL = Write Mode 
@@ -126,6 +149,10 @@ LABEL_REAL_ENTRY:
     int     21h                                     ; Return to DOS
 ; End of [SECTION .s16]
 
+
+; ==============================================================
+; 32 BIT SECTION
+; ==============================================================
 [SECTION .s32]
 [BITS    32]
 
@@ -164,7 +191,13 @@ LABEL_SEG_CODE32:
     call    TestRead
 
     ; End Here
-    jmp     SelectorCode16:0
+    ; jmp     SelectorCode16:0
+    
+    ; LDT
+    mov     ax, SelectorLDT
+    lldt    ax
+
+    jmp     SelectorLDTCodeA:0
 
 ; ----------------------------------------------------
 TestRead:
@@ -237,11 +270,11 @@ DispAL:
 
 ; ----------------------------------------------------
 DispReturn:
-    ; =================================================
+    ; ----------------------------------------------------------
     ; div: divides the 64 bits value accross EDX:EAX by a value.
     ; mul: 
     ; DispReturn: Display a `Return`
-    ; =================================================
+    ; ----------------------------------------------------------
     push    eax
     push    ebx
     mov     eax, edi
@@ -260,6 +293,9 @@ DispReturn:
 
 SegCode32Len        equ         $ - LABEL_SEG_CODE32
 
+; ==============================================================
+; GDT
+; ==============================================================
 [SECTION .gdt]
 ; GDT
 ;                                        Base               Limit               Attr
@@ -270,7 +306,8 @@ LABEL_DESC_CODE16:      Descriptor          0,             0ffffh,              
 LABEL_DESC_DATA:        Descriptor          0,        DataLen - 1,             DA_DRW
 LABEL_DESC_STACK:       Descriptor          0,         TopOfStack,    DA_DRWA + DA_32
 LABEL_DESC_TEST:        Descriptor   0500000h,             0ffffh,             DA_DRW
-LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             DA_DRW         
+LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             DA_DRW
+LABEL_DESC_LDT:         Descriptor          0,         LDTLen - 1,             DA_LDT
 ; End of GDT
 
 GDTLen              equ     $-LABEL_GDT         ; Length of GDT
@@ -283,11 +320,14 @@ SelectorCode16      equ     LABEL_DESC_CODE16   - LABEL_GDT
 SelectorData        equ     LABEL_DESC_DATA     - LABEL_GDT
 SelectorStack       equ     LABEL_DESC_STACK    - LABEL_GDT
 SelectorTest        equ     LABEL_DESC_TEST     - LABEL_GDT        
-SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT       
+SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT   
+SelectorLDT         equ     LABEL_DESC_LDT      - LABEL_GDT    
 
 ; End of [SECTION .gdt]
 
+; ==============================================================
 ; Data 1 Section
+; ==============================================================
 [SECTION .data1]
 ALIGN   32
 [BITS   32]
@@ -301,7 +341,9 @@ OffsetStrTest           equ     StrTest - $$
 DataLen                 equ     $ - LABEL_DATA
 ; End of [SECTION .data1]
 
+; ==============================================================
 ; Global Stack
+; ==============================================================
 [SECTION .gs]
 ALIGN 32
 [BITS   32]
@@ -311,13 +353,17 @@ LABEL_STACK:
 TopOfStack              equ     $ - LABEL_STACK - 1
 ; End of [SECTION .gs]
 
+; ==============================================================
 ; Data Session
+; ==============================================================
 [SECTION .dat]
 ALIGN   32
 [BITS   16]
 BootMessage:            db      "Hello, OS world!"
 
+; ==============================================================
 ; From Real Mode to Protect Mode
+; ==============================================================
 [SECTION .s16code]
 ALIGN   32
 [BITS   16]
@@ -339,5 +385,41 @@ LABEL_GO_BACK_TO_REAL:
 
 Code16Len               equ     $ - LABEL_SEG_CODE16
 
+; ==============================================================
+; LDT
+; ==============================================================
+[SECTION .ldt]
+ALIGN   32
+LABEL_LDT:
+LABEL_LDT_DESC_CODEA:   Descriptor          0,       CodeALen - 1,       DA_C + DA_32
+
+LDTLen                  equ         $ - LABEL_LDT
+
+; LDT Selector
+SelectorLDTCodeA        equ         LABEL_LDT_DESC_CODEA - LABEL_LDT + SA_TIL
+
+; End of [SECTION .ldt]
+
+; ==============================================================
+; Code A
+; ==============================================================
+[SECTION .codea]
+ALIGN 32
+[BITS 32]
+LABEL_CODE_A:
+    mov     ax, SelectorVideo
+    mov     gs, ax
+
+    mov     edi, (80 * 13 + 0) * 2
+    mov     ah, 0Ch
+    mov     al, 'L'
+    mov     [gs:edi], ax
+
+    jmp     SelectorCode16:0
+
+CodeALen                equ             $ - LABEL_CODE_A
+; ==============================================================
+; HEADER: 0xAA55
+; ==============================================================
 [SECTION .header]
 dw      0xAA55                                      ; End Sign, BootSectore must start with this
