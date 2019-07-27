@@ -79,6 +79,16 @@ LABEL_START:
     mov     byte [LABEL_LDT_DESC_CODEA + 4], al
     mov     byte [LABEL_LDT_DESC_CODEA + 7], ah
 
+    ; Initialize Call Gate Descriptor
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_SEG_CODE_DEST
+    mov     word [LABEL_DESC_CODE_DEST + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_DESC_CODE_DEST + 4], al
+    mov     byte [LABEL_DESC_CODE_DEST + 7], ah
+
     ; Prepare for loading GDTR
     xor     eax, eax
     mov     ax, ds
@@ -192,11 +202,14 @@ LABEL_SEG_CODE32:
 
     ; End Here
     ; jmp     SelectorCode16:0
+ 
+    ; Call Gate
+    call    SelectorCallGateTest:0
     
     ; LDT
     mov     ax, SelectorLDT
     lldt    ax
-
+    
     jmp     SelectorLDTCodeA:0
 
 ; ----------------------------------------------------
@@ -308,7 +321,12 @@ LABEL_DESC_STACK:       Descriptor          0,         TopOfStack,    DA_DRWA + 
 LABEL_DESC_TEST:        Descriptor   0500000h,             0ffffh,             DA_DRW
 LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             DA_DRW
 LABEL_DESC_LDT:         Descriptor          0,         LDTLen - 1,             DA_LDT
+LABEL_DESC_CODE_DEST:   Descriptor          0, SegCodeDestLen - 1,       DA_C + DA_32
 ; End of GDT
+
+; Gate
+LABEL_CALL_GATE_TEST:   Gate SelectorCodeDest,                  0,                  0,      DA_386CGate + DA_DPL0
+; End of Gate
 
 GDTLen              equ     $-LABEL_GDT         ; Length of GDT
 GDTPtr              dw      GDTLen - 1          ; GDT boundary, 2 bytes
@@ -322,7 +340,8 @@ SelectorStack       equ     LABEL_DESC_STACK    - LABEL_GDT
 SelectorTest        equ     LABEL_DESC_TEST     - LABEL_GDT        
 SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT   
 SelectorLDT         equ     LABEL_DESC_LDT      - LABEL_GDT    
-
+SelectorCodeDest    equ     LABEL_DESC_CODE_DEST - LABEL_GDT
+SelectorCallGateTest equ    LABEL_CALL_GATE_TEST- LABEL_GDT
 ; End of [SECTION .gdt]
 
 ; ==============================================================
@@ -421,5 +440,25 @@ CodeALen                equ             $ - LABEL_CODE_A
 ; ==============================================================
 ; HEADER: 0xAA55
 ; ==============================================================
-[SECTION .header]
-dw      0xAA55                                      ; End Sign, BootSectore must start with this
+; [SECTION .header]
+; dw      0xAA55                                      ; End Sign, BootSectore must start with this
+
+; ==============================================================
+; SECTION: Gate Segment 
+; ==============================================================
+[SECTION .sdest]
+[BITS 32]
+LABEL_SEG_CODE_DEST:
+    ; jmp $
+    mov     ax, SelectorVideo
+    mov     gs, ax
+
+    mov     edi, (80 * 12 + 0) * 2
+    mov     ah, 0Ch
+    mov     al, 'C'
+    mov     [gs:edi], ax
+
+    retf                                            ; return from `call`
+
+SegCodeDestLen          equ             $ - LABEL_SEG_CODE_DEST
+; End of [SECTION .sdest]
