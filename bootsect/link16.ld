@@ -18,5 +18,5 @@ SECTIONS
         .text        : { *(.text)}
 
 /*        . = 510 + 0x0100; */
-        .header      : { *(.header) }
+/*        .header      : { *(.header) } */
 }
