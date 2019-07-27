@@ -113,7 +113,7 @@ __(2)__: In INT 0x10 we only need offset, not the address
 ## D. Attr in GDT
 
 - __P__: Present Bit. P == 1: This segment exists in Memory.
-- __DPL__: Descriptor Privilege Level. 0 / 1 / 2 / 3. Larger means more previleged
+- __DPL__: Descriptor Privilege Level. 0 / 1 / 2 / 3. Larger means more privileged
 - __S__: Data / Code: S = 1 ; System / Gate: S = 0
 - __TYPE__: (3)
 - __G__: Granularity: G = 0: byte; G = 1: 4KB
@@ -150,3 +150,39 @@ __(4)__: D/B Bit, please see `osdev`,(Sz?)
 - In Executable Code Descriptor: D bit; D = 1 --> 32-bit address, 32-bit or 8-bit operand ; D = 0 --> 16-bit address, 16-bit or 8 bit operand
 - In Expend Down Descriptor: B Bit; B = 1 --> Segment Limit: 4GB; B = 0 --> Segment Limit 64KB
 - In STACK Descriptor: B Bit: B = 1 --> implicit stack accessing instruction(`pop`, `push`, `call`) use 32-bit `esp`. B = 0 --> 16-bit `esp`
+
+## E. Privilege Level
+
+In IA32, there are 4 privilege levels: 0, 1, 2, 3. Smaller number indicates higher privilege.
+Critical code or data should be put in higher privilege level, and processor is using this kind of strategy to preventing access from lower privilege level to 
+higher privilege level. If the processor dectes illegal request, it arises #GP.
+
+### E.1 CPL, DPL, RPL
+
+#### E.1.1 CPL (Current Privilege Level)
+
+`CPL` is the privilege level where current program is in. It is stored in the 1 - 0 bit in `cs` and `ss`. Generally, CPL equals the privilege level where 
+current code is in. When switching to another code segment, the processor will change `CPL`.
+
+`Conforming Code Segment` can be accessed by code having the same or lower privilege level, and the CPL will not change.
+
+#### E.1.2 DPL (Descriptor Privilege Level)
+
+`DPL` indicates the privilege level of a `Gate` or `Segment`. It is stored in the `DPL` position in the `Segment` or `Gate` Descriptor. 
+When current code wants to access a `Segment` or `Gate`, its `DPL` will be compared to `CPL` and the `Segment` or `Gate`'s `RPL`. 
+
+- __Data Segment__: `DPL` defines the lowest privilege level that can access this segment. _example: `DPL` = 1 --> CPL = 0 / 1 can access_ 
+- __Unconforming Code Segment__: `DPL` defines the privilege level that can access this segment. _Must be the same_
+- __Call Gate__: `DPL` defines the lowest privilege level that can access this `Call Gate`. _Same as `Data Segmant`_
+- __Conforming Code Segment__: (or `Unconforming Code Segment` accessed by `Call Gate`) : `DPL` defines the highest privilege level that 
+can access this segment. _example: `DPL` = 2 --> CPL = 0 / 1 can't access_
+- __TSS__: `DPL` defines the lowest privilege level that can access `TSS`. _Same as `Data Segment`_
+
+#### E.1.3 RPL (Requested Privilege Level)
+
+`RPL` is stored in the 0 - 1 bit in the Selector. The processor decides whether a request is legal by checking `RPL` and `CPL`, meaning even the 
+segment that is requesting has enough `CPL`, it still needs enough `RPL`. So we need `max(RPL, CPL)`
+
+The Operating System usually use `RPL` to prevent lower privileged application to access higher privileged segment.
+
+### E.2 Privilege Teansfer
