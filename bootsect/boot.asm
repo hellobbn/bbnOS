@@ -109,6 +109,16 @@ LABEL_START:
     mov     byte [LABEL_DESC_STACK3 + 4], al
     mov     byte [LABEL_DESC_STACK3 + 7], ah
 
+    ; Initialize TSS
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_TSS
+    mov     word [LABEL_DESC_TSS + 2], ax
+    shr     eax, 16
+    mov     byte [LABEL_DESC_TSS + 4], al
+    mov     byte [LABEL_DESC_TSS + 7], ah
+
     ; Prepare for loading GDTR
     xor     eax, eax
     mov     ax, ds
@@ -216,17 +226,20 @@ LABEL_SEG_CODE32:
 .2:         ; End of Display
     call    DispReturn
 
-    call    TestRead
-    call    TestWrite
-    call    TestRead
+    ; call    TestRead
+    ; call    TestWrite
+    ; call    TestRead
 
     ; End Here
     ; jmp     SelectorCode16:0
  
     ; Call Gate
-    call    SelectorCallGateTest:0
+    ; call    SelectorCallGateTest:0
 
     ; Try RING 3
+    mov     ax, SelectorTSS
+    ltr     ax
+
     push    SelectorStack3                      ; (Caller) ss
     push    TopOfStack3                         ; (Caller) esp
     push    SelectorCodeRing3                   ; (Caller) cs
@@ -234,10 +247,10 @@ LABEL_SEG_CODE32:
     retf
     
     ; LDT
-    mov     ax, SelectorLDT
-    lldt    ax
+    ; mov     ax, SelectorLDT
+    ; lldt    ax
     
-    jmp     SelectorLDTCodeA:0
+    ; jmp     SelectorLDTCodeA:0
 
 ; ----------------------------------------------------
 TestRead:
@@ -350,11 +363,12 @@ LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             D
 LABEL_DESC_LDT:         Descriptor          0,         LDTLen - 1,             DA_LDT
 LABEL_DESC_CODE_DEST:   Descriptor          0, SegCodeDestLen - 1,       DA_C + DA_32
 LABEL_DESC_CODE_RING3:  Descriptor          0,SegCodeRing3Len - 1,       DA_C + DA_32 + DA_DPL3     ; RING 3
+LABEL_DESC_TSS:         Descriptor          0,         TSSLen - 1,          DA_386TSS
 LABEL_DESC_STACK3:      Descriptor          0,        TopOfStack3,    DA_DRWA + DA_32 + DA_DPL3     ; Ring 3 Stack
 ; End of GDT
 
 ; Gate
-LABEL_CALL_GATE_TEST:   Gate SelectorCodeDest,                  0,                  0,      DA_386CGate + DA_DPL0
+LABEL_CALL_GATE_TEST:   Gate SelectorCodeDest,                  0,                  0,      DA_386CGate + DA_DPL3
 ; End of Gate
 
 GDTLen              equ     $-LABEL_GDT         ; Length of GDT
@@ -370,9 +384,10 @@ SelectorTest        equ     LABEL_DESC_TEST     - LABEL_GDT
 SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT   
 SelectorLDT         equ     LABEL_DESC_LDT      - LABEL_GDT    
 SelectorCodeDest    equ     LABEL_DESC_CODE_DEST - LABEL_GDT
-SelectorCallGateTest equ    LABEL_CALL_GATE_TEST- LABEL_GDT
+SelectorCallGateTest equ    LABEL_CALL_GATE_TEST- LABEL_GDT     + SA_RPL3
 SelectorCodeRing3   equ     LABEL_DESC_CODE_RING3 - LABEL_GDT   + SA_RPL3
 SelectorStack3      equ     LABEL_DESC_STACK3   - LABEL_GDT     + SA_RPL3
+SelectorTSS         equ     LABEL_DESC_TSS      - LABEL_GDT
 ; End of [SECTION .gdt]
 
 ; ==============================================================
@@ -489,7 +504,13 @@ LABEL_SEG_CODE_DEST:
     mov     al, 'C'
     mov     [gs:edi], ax
 
-    retf                                            ; return from `call`
+    ; Load LDT
+    mov     ax, SelectorLDT
+    lldt    ax
+
+    jmp     SelectorLDTCodeA:0
+
+    ; retf                                            ; return from `call`
 
 SegCodeDestLen          equ             $ - LABEL_SEG_CODE_DEST
 ; End of [SECTION .sdest]
@@ -509,6 +530,7 @@ LABEL_CODE_RING3:
     mov     al, '3'
     mov     [gs:edi], ax
 
+    call    SelectorCallGateTest:0
     jmp $
 SegCodeRing3Len         equ             $ - LABEL_CODE_RING3
 ; End of Ring 3 code
@@ -524,3 +546,39 @@ LABEL_STACK3:
 TopOfStack3             equ             $ - LABEL_STACK3 - 1
 ; ENd of Stack3
 
+; ==============================================================
+; TSS
+; ==============================================================
+[SECTION .tss]
+ALIGN 32
+[BITS 32]
+LABEL_TSS:
+    dd                  0
+    dd                  TopOfStack
+    dd                  SelectorStack
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dd                  0
+    dw                  0
+    dw                  $ - LABEL_TSS + 2
+    db                  0ffh
+TSSLen                  equ     $ - LABEL_TSS
