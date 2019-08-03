@@ -375,14 +375,14 @@ GDTLen              equ     $-LABEL_GDT         ; Length of GDT
 GDTPtr              dw      GDTLen - 1          ; GDT boundary, 2 bytes
                     dd      0                   ; GDT Base Address, 4 bytes
 ; GDT Selector
-SelectorNormal      equ     LABEL_DESC_NORMAL   - LABEL_GDT 
+SelectorNormal      equ     LABEL_DESC_NORMAL   - LABEL_GDT
 SelectorCode32      equ     LABEL_DESC_CODE32   - LABEL_GDT
 SelectorCode16      equ     LABEL_DESC_CODE16   - LABEL_GDT
 SelectorData        equ     LABEL_DESC_DATA     - LABEL_GDT
 SelectorStack       equ     LABEL_DESC_STACK    - LABEL_GDT
-SelectorTest        equ     LABEL_DESC_TEST     - LABEL_GDT        
-SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT   
-SelectorLDT         equ     LABEL_DESC_LDT      - LABEL_GDT    
+SelectorTest        equ     LABEL_DESC_TEST     - LABEL_GDT
+SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT
+SelectorLDT         equ     LABEL_DESC_LDT      - LABEL_GDT
 SelectorCodeDest    equ     LABEL_DESC_CODE_DEST - LABEL_GDT
 SelectorCallGateTest equ    LABEL_CALL_GATE_TEST- LABEL_GDT     + SA_RPL3
 SelectorCodeRing3   equ     LABEL_DESC_CODE_RING3 - LABEL_GDT   + SA_RPL3
@@ -490,7 +490,7 @@ CodeALen                equ             $ - LABEL_CODE_A
 ; dw      0xAA55                                      ; End Sign, BootSectore must start with this
 
 ; ==============================================================
-; SECTION: Gate Segment 
+; SECTION: Gate Segment
 ; ==============================================================
 [SECTION .sdest]
 [BITS 32]
@@ -516,7 +516,7 @@ SegCodeDestLen          equ             $ - LABEL_SEG_CODE_DEST
 ; End of [SECTION .sdest]
 
 ; ==============================================================
-; RING 3 
+; RING 3
 ; ==============================================================
 [SECTION .ring3]
 ALIGN 32
