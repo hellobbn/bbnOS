@@ -169,20 +169,114 @@ current code is in. When switching to another code segment, the processor will c
 #### E.1.2 DPL (Descriptor Privilege Level)
 
 `DPL` indicates the privilege level of a `Gate` or `Segment`. It is stored in the `DPL` position in the `Segment` or `Gate` Descriptor. 
-When current code wants to access a `Segment` or `Gate`, its `DPL` will be compared to `CPL` and the `Segment` or `Gate`'s `RPL`. 
+When current code wants to access a `Segment` or `Gate`, its `DPL` will be compared to `CPL` and the `Segment` or `Gate`'s `RPL`.
 
-- __Data Segment__: `DPL` defines the lowest privilege level that can access this segment. _example: `DPL` = 1 --> CPL = 0 / 1 can access_ 
+- __Data Segment__: `DPL` defines the lowest privilege level that can access this segment. _example: `DPL` = 1 --> CPL = 0 / 1 can access_
 - __Unconforming Code Segment__: `DPL` defines the privilege level that can access this segment. _Must be the same_
 - __Call Gate__: `DPL` defines the lowest privilege level that can access this `Call Gate`. _Same as `Data Segmant`_
-- __Conforming Code Segment__: (or `Unconforming Code Segment` accessed by `Call Gate`) : `DPL` defines the highest privilege level that 
+- __Conforming Code Segment__: (or `Unconforming Code Segment` accessed by `Call Gate`) : `DPL` defines the highest privilege level that
 can access this segment. _example: `DPL` = 2 --> CPL = 0 / 1 can't access_
 - __TSS__: `DPL` defines the lowest privilege level that can access `TSS`. _Same as `Data Segment`_
 
 #### E.1.3 RPL (Requested Privilege Level)
 
-`RPL` is stored in the 0 - 1 bit in the Selector. The processor decides whether a request is legal by checking `RPL` and `CPL`, meaning even the 
+`RPL` is stored in the 0 - 1 bit in the Selector. The processor decides whether a request is legal by checking `RPL` and `CPL`, meaning even the
 segment that is requesting has enough `CPL`, it still needs enough `RPL`. So we need `max(RPL, CPL)`
 
 The Operating System usually use `RPL` to prevent lower privileged application to access higher privileged segment.
 
 ### E.2 Privilege Teansfer
+
+#### E.2.1 Using `jmp` and `call`
+
+`jmp` and `call` instruction can directly transfer control. For example, if the target is _Unconforming Code Segment_, then the CPL needs to be equal to the target's `DPL`. If the target is _Conforming Code Segment_, then the target's `CPL` has to be laerger than or equal to thr target's `DPL`. So `jmp` and `call` is very limited. We are needing more methods.
+
+#### E.2.2 Gate
+
+`Gate` is a descriptor, whose structure is like the following:
+
+```
+HIGH ---------------------------------------------------------------- LOW
+| Byte 7 | Byte 6 | Byte 5 | Byte 4 | Byte 3 | Byte 2 | Byte 1 | Byte 0 |
+|     Offset      |       Attr      |     Selector    |      Offset     |
+
+Attr:
+
+| 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| P |   DPL | S |     TYPE      | 0 | 0 | 0 |    Param Count    |
+```
+
+There are four gates:
+ - Call Gates
+ - Interrupt Gates
+ - Trap Gates
+ - Task Gates
+
+As you can see in code, there is a `Call Gate` calling the code in `DESC_CODE_RING3`.
+
+Gate and `call` allow transfer from lower privilege level to higher privilege level.
+
+Note that programs in different privilege level does NOT share the same stack.
+
+#### E.2.3 RET
+
+##### E.2.3.1 About Stack
+
+If a `call` or `jmp` does not happen in the same `SEGMENT`, it is a `Far jmp/call`, instead we cakll it a `Near jmp/call`.
+
+For `jmp`, this does not affect much, it is just a matter of position: One within the segment, one outside the segment.
+
+But for `call`, things gets a bit complicated, because `call` will affect the stack. `Near call` pushes `eip` and pops `eip` when `ret`. `Far call` will not only push `eip` but also `cs`.
+
+##### E.2.3.2 More Theory
+
+As we have mentioned above, `call` through `gate` will deal changes to the `stack`. As we have 4 privilege levels, we need 4 stacks. We therefore need `TSS`(Task-State Stack), a data structure containing many bytes, in which there are 3 `ss` and `esp` pointing to `stack` of other privilege levels.
+
+Here is the prosedure:
+
+1. Based on the target code's `DPL` (New `CPL`), choose the correct `esp` and `ss`
+
+2. Read new `ss` and `esp` from `TSS` (Will raise #TS if wrong ss, esp or TSS limit is found.)
+
+3. Validate `ss` descriptor. Will raise #TS if wrong.
+
+4. Temperarily save current `ss` and `esp`.
+
+5. Load new `ss` and `esp`.
+
+6. Push the `ss` and `esp` just saved.
+
+7. Copy parameters from caller's stack to current stack. Need `Param Count` to decide how many parameters to be copied.
+
+8. Push current `cs` and `eip`
+
+9. Load `cs` and `eip` from gate, start program being called.
+
+---------------------------------------
+
+The Stack will look like this:
+```
+HIGH
+|    ss   |
+|    esp  |
+| param 1 |
+| param 2 |
+| param 3 |
+|    cs   |
+|   eip   |
+LOW
+```
+
+And for `ret`, here is the precedure:
+
+1. Check `RPL` in the `cs` in the stack to decide if changing privilege level is required
+
+2. Load `cs` and `eip` from stack
+
+3. Add `esp` to skip parameters. `esp` now points to caller's `ss` and `esp`.
+
+4. load `ss` and `esp`. Switch to the stack of the caller. Trash current `ss` and `esp`.
+
+5. In caller's stack, skip the parameters.
+
+6. Check `ds`, `es`, `fs`, `gs`, if any of them's `DPL` is lower than `CPL`(Does NOT apply to `Unconforming Code Segment`), then a empty descriptor will be loaded to the register.
