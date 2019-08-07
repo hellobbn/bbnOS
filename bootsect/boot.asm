@@ -34,7 +34,7 @@ LABEL_START:
     mov     ax, cs                              ; CS -> AX
     shl     eax, 4                              ; EAX << 4
     add     eax, LABEL_SEG_CODE32
-    mov     word [LABEL_DESC_CODE32 + 2], ax    ; AX -> [LAB...] 
+    mov     word [LABEL_DESC_CODE32 + 2], ax    ; AX -> [LAB...]
     shr     eax, 16
     mov     byte [LABEL_DESC_CODE32 + 4], al
     mov     byte [LABEL_DESC_CODE32 + 7], ah
@@ -151,9 +151,9 @@ LABEL_START:
 ; ------------------------------------------------
 ; DispStr: Calling INT 0x10 to Display Hello World
 ; ------------------------------------------------
-; INT 10H: 
-;       - AH = 13H: Write String, 
-;       - AL = Write Mode 
+; INT 10H:
+;       - AH = 13H: Write String,
+;       - AL = Write Mode
 ;       - BH = Page Number
 ;       - BL = Color
 ;       - CX = String Length
@@ -167,7 +167,7 @@ DispStr:
     mov     cx, 16                                  ; String Length
     mov     ax, 01301h                              ; AH = 0x13, AL = 0x01
     mov     bx, 0000ch                              ; BH = 0x00, BL = 0x0C
-    mov     dl, 0           
+    mov     dl, 0
     int     10h                                     ; Interrupt 10
     ret
 
@@ -232,7 +232,7 @@ LABEL_SEG_CODE32:
 
     ; End Here
     ; jmp     SelectorCode16:0
- 
+
     ; Call Gate
     ; call    SelectorCallGateTest:0
 
@@ -245,11 +245,11 @@ LABEL_SEG_CODE32:
     push    SelectorCodeRing3                   ; (Caller) cs
     push    0                                   ; (Caller) eip
     retf
-    
+
     ; LDT
     ; mov     ax, SelectorLDT
     ; lldt    ax
-    
+
     ; jmp     SelectorLDTCodeA:0
 
 ; ----------------------------------------------------
@@ -325,7 +325,7 @@ DispAL:
 DispReturn:
     ; ----------------------------------------------------------
     ; div: divides the 64 bits value accross EDX:EAX by a value.
-    ; mul: 
+    ; mul:
     ; DispReturn: Display a `Return`
     ; ----------------------------------------------------------
     push    eax
