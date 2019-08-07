@@ -2,6 +2,9 @@
 
 %include    "./boot.inc"
 
+PageDirBase             equ         200000h         ; Page Directory Start: 2M
+PageTblBase             equ         201000h         ; Page Table Start: 2M + 4K
+
 jmp     LABEL_START
 
 ; ==============================================================
@@ -59,66 +62,6 @@ LABEL_START:
     mov     byte [LABEL_DESC_STACK + 4], al
     mov     byte [LABEL_DESC_STACK + 7], ah
 
-    ; Initialize LDT
-    xor     eax, eax
-    mov     ax, ds
-    shl     eax, 4
-    add     eax, LABEL_LDT
-    mov     word [LABEL_DESC_LDT + 2], ax
-    shr     eax, 16
-    mov     byte [LABEL_DESC_LDT + 4], al
-    mov     byte [LABEL_DESC_LDT + 7], ah
-
-    ; Initialize Code A in LDT
-    xor     eax, eax
-    mov     ax, ds
-    shl     eax, 4
-    add     eax, LABEL_CODE_A
-    mov     word [LABEL_LDT_DESC_CODEA + 2], ax
-    shr     eax, 16
-    mov     byte [LABEL_LDT_DESC_CODEA + 4], al
-    mov     byte [LABEL_LDT_DESC_CODEA + 7], ah
-
-    ; Initialize Call Gate Descriptor
-    xor     eax, eax
-    mov     ax, ds
-    shl     eax, 4
-    add     eax, LABEL_SEG_CODE_DEST
-    mov     word [LABEL_DESC_CODE_DEST + 2], ax
-    shr     eax, 16
-    mov     byte [LABEL_DESC_CODE_DEST + 4], al
-    mov     byte [LABEL_DESC_CODE_DEST + 7], ah
-
-    ; Initialize Code for RING3
-    xor     eax, eax
-    mov     ax, ds
-    shl     eax, 4
-    add     eax, LABEL_CODE_RING3
-    mov     word [LABEL_DESC_CODE_RING3 + 2], ax
-    shr     eax, 16
-    mov     byte [LABEL_DESC_CODE_RING3 + 4], al
-    mov     byte [LABEL_DESC_CODE_RING3 + 7], ah
-
-    ; Initialize Ring 3 STAck
-    xor     eax, eax
-    mov     ax, ds
-    shl     eax, 4
-    add     eax, LABEL_STACK3
-    mov     word [LABEL_DESC_STACK3 + 2], ax
-    shr     eax, 16
-    mov     byte [LABEL_DESC_STACK3 + 4], al
-    mov     byte [LABEL_DESC_STACK3 + 7], ah
-
-    ; Initialize TSS
-    xor     eax, eax
-    mov     ax, ds
-    shl     eax, 4
-    add     eax, LABEL_TSS
-    mov     word [LABEL_DESC_TSS + 2], ax
-    shr     eax, 16
-    mov     byte [LABEL_DESC_TSS + 4], al
-    mov     byte [LABEL_DESC_TSS + 7], ah
-
     ; Prepare for loading GDTR
     xor     eax, eax
     mov     ax, ds
@@ -161,15 +104,15 @@ LABEL_START:
 ;       - DL = Column
 ;       - ES:BP = Offset of String
 
-DispStr:
-    mov     ax, BootMessage
-    mov     bp, ax                                  ; ES:BP: Offset of String
-    mov     cx, 16                                  ; String Length
-    mov     ax, 01301h                              ; AH = 0x13, AL = 0x01
-    mov     bx, 0000ch                              ; BH = 0x00, BL = 0x0C
-    mov     dl, 0
-    int     10h                                     ; Interrupt 10
-    ret
+; DispStr:
+;     mov     ax, BootMessage
+;     mov     bp, ax                                  ; ES:BP: Offset of String
+;     mov     cx, 16                                  ; String Length
+;     mov     ax, 01301h                              ; AH = 0x13, AL = 0x01
+;     mov     bx, 0000ch                              ; BH = 0x00, BL = 0x0C
+;     mov     dl, 0
+;     int     10h                                     ; Interrupt 10
+;     ret
 
 LABEL_REAL_ENTRY:
     mov     ax, cs                                  ; Recover all segment registers
@@ -197,10 +140,10 @@ LABEL_REAL_ENTRY:
 [BITS    32]
 
 LABEL_SEG_CODE32:
+    call    SetupPaging
+
     mov     ax, SelectorData
     mov     ds, ax                                  ; Data Selector
-    mov     ax, SelectorTest
-    mov     es, ax                                  ; Test Selector
     mov     ax, SelectorVideo
     mov     gs, ax                                  ; Video Selector
 
@@ -224,126 +167,49 @@ LABEL_SEG_CODE32:
     add     edi, 2
     jmp     .1
 .2:         ; End of Display
-    call    DispReturn
 
-    ; call    TestRead
-    ; call    TestWrite
-    ; call    TestRead
+    jmp     SelectorCode16:0
 
-    ; End Here
-    ; jmp     SelectorCode16:0
+SetupPaging:
+    ; Linear Address equals physical address
 
-    ; Call Gate
-    ; call    SelectorCallGateTest:0
-
-    ; Try RING 3
-    mov     ax, SelectorTSS
-    ltr     ax
-
-    push    SelectorStack3                      ; (Caller) ss
-    push    TopOfStack3                         ; (Caller) esp
-    push    SelectorCodeRing3                   ; (Caller) cs
-    push    0                                   ; (Caller) eip
-    retf
-
-    ; LDT
-    ; mov     ax, SelectorLDT
-    ; lldt    ax
-
-    ; jmp     SelectorLDTCodeA:0
-
-; ----------------------------------------------------
-TestRead:
-    xor     esi, esi                        ; ESI <- 0
-    mov     ecx, 8                          ; Count = 8
-.loop:
-    mov     al, [es:esi]                    ; Test Segment -> AL
-    call    DispAL
-    inc     esi                             ; ESI ++
-    loop    .loop                           ; ECX is count
-
-    call DispReturn
-
-    ret
-; ----------------------------------------------------
-
-; ----------------------------------------------------
-TestWrite:
-    push    esi                             ; Save ESI
-    push    edi                             ; Save EDI
-    xor     esi, esi                        ; ESI = 0
+    ; Initialize Page Directory
+    mov     ax, SelectorPageDir
+    mov     es, ax
+    mov     ecx, 1024
     xor     edi, edi
-    mov     esi, OffsetStrTest
-    cld
+    xor     eax, eax
+    mov     eax, PageTblBase | PG_P | PG_USU | PG_RWW
+
 .1:
-    lodsb
-    test    al, al
-    jz      .2
-    mov     [es:edi], al
-    inc     edi
-    jmp     .1
+    stosd
+    add     eax, 4096
+    loop    .1
+
+    ; Initialize Page Table
+    mov     ax, SelectorPageTbl
+    mov     es, ax
+    mov     ecx, 1024 * 1024
+    xor     edi, edi
+    xor     eax, eax
+    mov     eax, PG_P | PG_USU | PG_RWW
+
 .2:
-    pop     edi
-    pop     esi
+    stosd
+    add     eax, 4096
+    loop    .2
+
+    mov     eax, PageDirBase
+    mov     cr3, eax
+    mov     eax, cr0
+    or      eax, 80000000h
+    mov     cr0, eax
+    jmp     short .3
+.3:
+    nop
 
     ret
 ; ----------------------------------------------------
-
-; ----------------------------------------------------
-DispAL:
-    push    ecx
-    push    edx
-
-    mov     ah, 0Ch
-    mov     dl, al
-    shr     al, 4               ; HIGH 4 BIT first
-    mov     ecx, 2              ; Count 2
-.begin:
-    and     al, 01111b
-    cmp     al, 9
-    ja      .1                  ; jump if al >u 9
-    add     al, '0'
-    jmp     .2
-.1:
-    sub     al, 0Ah
-    add     al, 'A'
-.2:
-    mov     [gs:edi], ax        ; Display it
-    add     edi, 2
-
-    mov     al, dl              ; Now for LOW 4 BIT
-    loop    .begin
-    add     edi, 2
-
-    pop     edx
-    pop     ecx
-
-    ret
-; ----------------------------------------------------
-
-; ----------------------------------------------------
-DispReturn:
-    ; ----------------------------------------------------------
-    ; div: divides the 64 bits value accross EDX:EAX by a value.
-    ; mul:
-    ; DispReturn: Display a `Return`
-    ; ----------------------------------------------------------
-    push    eax
-    push    ebx
-    mov     eax, edi
-    mov     bl, 160
-    div     bl                          ; EAX / BL
-    and     eax, 0FFh
-    inc     eax
-    mov     bl, 160
-    mul     bl
-    mov     edi, eax
-    pop     ebx
-    pop     eax
-    ret
-; ----------------------------------------------------
-
-
 SegCode32Len        equ         $ - LABEL_SEG_CODE32
 
 ; ==============================================================
@@ -358,17 +224,12 @@ LABEL_DESC_CODE32:      Descriptor          0,   SegCode32Len - 1,       DA_C + 
 LABEL_DESC_CODE16:      Descriptor          0,             0ffffh,               DA_C
 LABEL_DESC_DATA:        Descriptor          0,        DataLen - 1,             DA_DRW
 LABEL_DESC_STACK:       Descriptor          0,         TopOfStack,    DA_DRWA + DA_32
-LABEL_DESC_TEST:        Descriptor   0500000h,             0ffffh,             DA_DRW
 LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             DA_DRW + DA_DPL3
-LABEL_DESC_LDT:         Descriptor          0,         LDTLen - 1,             DA_LDT
-LABEL_DESC_CODE_DEST:   Descriptor          0, SegCodeDestLen - 1,       DA_C + DA_32
-LABEL_DESC_CODE_RING3:  Descriptor          0,SegCodeRing3Len - 1,       DA_C + DA_32 + DA_DPL3     ; RING 3
-LABEL_DESC_TSS:         Descriptor          0,         TSSLen - 1,          DA_386TSS
-LABEL_DESC_STACK3:      Descriptor          0,        TopOfStack3,    DA_DRWA + DA_32 + DA_DPL3     ; Ring 3 Stack
+LABEL_DESC_PAGE_DIR:    Descriptor PageDirBase,              4095,             DA_DRW
+LABEL_DESC_PAGE_TBL:    Descriptor PageTblBase,              1023,             DA_DRW | DA_LIMIT_4K
 ; End of GDT
 
 ; Gate
-LABEL_CALL_GATE_TEST:   Gate SelectorCodeDest,                  0,                  0,      DA_386CGate + DA_DPL3
 ; End of Gate
 
 GDTLen              equ     $-LABEL_GDT         ; Length of GDT
@@ -380,14 +241,9 @@ SelectorCode32      equ     LABEL_DESC_CODE32   - LABEL_GDT
 SelectorCode16      equ     LABEL_DESC_CODE16   - LABEL_GDT
 SelectorData        equ     LABEL_DESC_DATA     - LABEL_GDT
 SelectorStack       equ     LABEL_DESC_STACK    - LABEL_GDT
-SelectorTest        equ     LABEL_DESC_TEST     - LABEL_GDT
 SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT
-SelectorLDT         equ     LABEL_DESC_LDT      - LABEL_GDT
-SelectorCodeDest    equ     LABEL_DESC_CODE_DEST - LABEL_GDT
-SelectorCallGateTest equ    LABEL_CALL_GATE_TEST- LABEL_GDT     + SA_RPL3
-SelectorCodeRing3   equ     LABEL_DESC_CODE_RING3 - LABEL_GDT   + SA_RPL3
-SelectorStack3      equ     LABEL_DESC_STACK3   - LABEL_GDT     + SA_RPL3
-SelectorTSS         equ     LABEL_DESC_TSS      - LABEL_GDT
+SelectorPageDir     equ     LABEL_DESC_PAGE_DIR - LABEL_GDT
+SelectorPageTbl     equ     LABEL_DESC_PAGE_TBL - LABEL_GDT
 ; End of [SECTION .gdt]
 
 ; ==============================================================
@@ -399,10 +255,8 @@ ALIGN   32
 LABEL_DATA:
 SPValueInRealMode       dw      0
 ; Strings
-PMMessage               db      "In Protect Mode Now ^_^", 0
+PMMessage               db      "In Protect Mode Now, with PAGING!!! ^_^", 0
 OffsetPMMessage         equ     PMMessage - $$
-StrTest                 db      "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 0
-OffsetStrTest           equ     StrTest - $$
 DataLen                 equ     $ - LABEL_DATA
 ; End of [SECTION .data1]
 
@@ -417,14 +271,6 @@ LABEL_STACK:
 
 TopOfStack              equ     $ - LABEL_STACK - 1
 ; End of [SECTION .gs]
-
-; ==============================================================
-; Data Session
-; ==============================================================
-[SECTION .dat]
-ALIGN   32
-[BITS   16]
-BootMessage:            db      "Hello, OS world!"
 
 ; ==============================================================
 ; From Real Mode to Protect Mode
@@ -449,136 +295,3 @@ LABEL_GO_BACK_TO_REAL:
     jmp     0:LABEL_REAL_ENTRY
 
 Code16Len               equ     $ - LABEL_SEG_CODE16
-
-; ==============================================================
-; LDT
-; ==============================================================
-[SECTION .ldt]
-ALIGN   32
-LABEL_LDT:
-LABEL_LDT_DESC_CODEA:   Descriptor          0,       CodeALen - 1,       DA_C + DA_32
-
-LDTLen                  equ         $ - LABEL_LDT
-
-; LDT Selector
-SelectorLDTCodeA        equ         LABEL_LDT_DESC_CODEA - LABEL_LDT + SA_TIL
-
-; End of [SECTION .ldt]
-
-; ==============================================================
-; Code A
-; ==============================================================
-[SECTION .codea]
-ALIGN 32
-[BITS 32]
-LABEL_CODE_A:
-    mov     ax, SelectorVideo
-    mov     gs, ax
-
-    mov     edi, (80 * 13 + 0) * 2
-    mov     ah, 0Ch
-    mov     al, 'L'
-    mov     [gs:edi], ax
-
-    jmp     SelectorCode16:0
-
-CodeALen                equ             $ - LABEL_CODE_A
-; ==============================================================
-; HEADER: 0xAA55
-; ==============================================================
-; [SECTION .header]
-; dw      0xAA55                                      ; End Sign, BootSectore must start with this
-
-; ==============================================================
-; SECTION: Gate Segment
-; ==============================================================
-[SECTION .sdest]
-[BITS 32]
-LABEL_SEG_CODE_DEST:
-    ; jmp $
-    mov     ax, SelectorVideo
-    mov     gs, ax
-
-    mov     edi, (80 * 12 + 0) * 2
-    mov     ah, 0Ch
-    mov     al, 'C'
-    mov     [gs:edi], ax
-
-    ; Load LDT
-    mov     ax, SelectorLDT
-    lldt    ax
-
-    jmp     SelectorLDTCodeA:0
-
-    ; retf                                            ; return from `call`
-
-SegCodeDestLen          equ             $ - LABEL_SEG_CODE_DEST
-; End of [SECTION .sdest]
-
-; ==============================================================
-; RING 3
-; ==============================================================
-[SECTION .ring3]
-ALIGN 32
-[BITS 32]
-LABEL_CODE_RING3:
-    mov     ax, SelectorVideo
-    mov     gs, ax
-
-    mov     edi, (80 * 14 + 0) * 2
-    mov     ah, 0Ch
-    mov     al, '3'
-    mov     [gs:edi], ax
-
-    call    SelectorCallGateTest:0
-    jmp $
-SegCodeRing3Len         equ             $ - LABEL_CODE_RING3
-; End of Ring 3 code
-
-; ==============================================================
-; RING 3 Stack
-; ==============================================================
-[SECTION .s3]
-ALIGN 32
-[BITS 32]
-LABEL_STACK3:
-    times   512         db              0
-TopOfStack3             equ             $ - LABEL_STACK3 - 1
-; ENd of Stack3
-
-; ==============================================================
-; TSS
-; ==============================================================
-[SECTION .tss]
-ALIGN 32
-[BITS 32]
-LABEL_TSS:
-    dd                  0
-    dd                  TopOfStack
-    dd                  SelectorStack
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dd                  0
-    dw                  0
-    dw                  $ - LABEL_TSS + 2
-    db                  0ffh
-TSSLen                  equ     $ - LABEL_TSS
