@@ -2,7 +2,7 @@
 
 %include    "./boot.inc"
 
-PageDirBase             equ         200000h         ; Page Directory Start: 2M
+PageDirBase             equ         200000h         ; Page Directory Start: 2M, Address
 PageTblBase             equ         201000h         ; Page Table Start: 2M + 4K
 
 jmp     LABEL_START
@@ -176,23 +176,23 @@ SetupPaging:
     ; Initialize Page Directory
     mov     ax, SelectorPageDir
     mov     es, ax
-    mov     ecx, 1024
+    mov     ecx, 1024                               ; 1024 Entries in Page Directory, 1024 * 4bytes = 4KiB
     xor     edi, edi
     xor     eax, eax
     mov     eax, PageTblBase | PG_P | PG_USU | PG_RWW
 
 .1:
-    stosd
-    add     eax, 4096
+    stosd                                           ; Store EAX at ES:EDI, EDI = EDI + 4
+    add     eax, 4096                               ; 4096 -> 2^12, 4K, each page table 
     loop    .1
 
     ; Initialize Page Table
-    mov     ax, SelectorPageTbl
+    mov     ax, SelectorPageTbl                     ; Now for Page Table
     mov     es, ax
-    mov     ecx, 1024 * 1024
+    mov     ecx, 1024 * 1024                        ; 1024 Page Table Entries, 1024 Page Tables                           
     xor     edi, edi
     xor     eax, eax
-    mov     eax, PG_P | PG_USU | PG_RWW
+    mov     eax, PG_P | PG_USU | PG_RWW             ; Base Address -> 0
 
 .2:
     stosd
@@ -200,10 +200,10 @@ SetupPaging:
     loop    .2
 
     mov     eax, PageDirBase
-    mov     cr3, eax
+    mov     cr3, eax                                ; Move PageDirBase to cr3 without modifying any params
     mov     eax, cr0
     or      eax, 80000000h
-    mov     cr0, eax
+    mov     cr0, eax                                ; Enable Paging
     jmp     short .3
 .3:
     nop
