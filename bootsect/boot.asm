@@ -1,6 +1,7 @@
 ; asmsyntax=nasm
 
 %include    "./boot.inc"
+%include    "./lib.inc"
 
 PageDirBase             equ         200000h         ; Page Directory Start: 2M, Address
 PageTblBase             equ         201000h         ; Page Table Start: 2M + 4K
@@ -72,6 +73,8 @@ LABEL_START:
     ; Load GDTR
     lgdt    [GDTPtr]
 
+    call    DetectMemory
+
     ; Disable Interrupt
     cli
 
@@ -130,8 +133,31 @@ LABEL_REAL_ENTRY:
     xor     eax, eax
     mov     ax, 4c00h
     int     21h                                     ; Return to DOS
+    jmp     $
 ; End of [SECTION .s16]
 
+; -------------------------------------------------------------
+; Memory Detection using 0x15 INT
+; ------------------------------------------------------------
+DetectMemory:
+    mov     di, MemChkBuf
+    xor     ebx, ebx
+    mov     dword [MemNum], 0
+.loop:
+    mov     eax, 0xE820
+    mov     ecx, 20
+    mov     edx, 0534D4150h
+    int     15h
+    jc      LABEL_MEM_CHK_FAIL
+    add     di, 20
+    inc     dword [MemNum]
+    cmp     ebx, 0
+    jne     .loop
+    jmp     LABEL_MEM_CHK_OK
+LABEL_MEM_CHK_FAIL:
+    mov     dword [MemNum], 0
+LABEL_MEM_CHK_OK:
+    ret
 
 ; ==============================================================
 ; 32 BIT SECTION
@@ -152,21 +178,17 @@ LABEL_SEG_CODE32:
 
     mov     esp, TopOfStack
 
+    push    MemChkTitleOffset
+    call    DispStr
+    add     esp, 4
+
+    call    PrintMemInfo
+    call    DispReturn
+
     ; Display a String
-    mov     ah, 0Ch                                 ; Black; Red
-    xor     esi, esi                                ; ESI = 0
-    xor     edi, edi                                ; EDI = 0
-    mov     esi, OffsetPMMessage                    ; Message Offset
-    mov     edi, (80 * 10 + 0) * 2                  ; Row 10, Colomn 0
-    cld                                             ; Clear DF Flag, ESI inc
-.1:
-    lodsb                                           ; Load byte at address DS:(E)SI into AL
-    test    al, al
-    jz      .2
-    mov     [gs:edi],   ax
-    add     edi, 2
-    jmp     .1
-.2:         ; End of Display
+    push    OffsetPMMessage
+    call    DispStr
+    add     esp, 4
 
     jmp     SelectorCode16:0
 
@@ -183,13 +205,13 @@ SetupPaging:
 
 .1:
     stosd                                           ; Store EAX at ES:EDI, EDI = EDI + 4
-    add     eax, 4096                               ; 4096 -> 2^12, 4K, each page table 
+    add     eax, 4096                               ; 4096 -> 2^12, 4K, each page table
     loop    .1
 
     ; Initialize Page Table
     mov     ax, SelectorPageTbl                     ; Now for Page Table
     mov     es, ax
-    mov     ecx, 1024 * 1024                        ; 1024 Page Table Entries, 1024 Page Tables                           
+    mov     ecx, 1024 * 1024                        ; 1024 Page Table Entries, 1024 Page Tables
     xor     edi, edi
     xor     eax, eax
     mov     eax, PG_P | PG_USU | PG_RWW             ; Base Address -> 0
@@ -208,6 +230,54 @@ SetupPaging:
 .3:
     nop
 
+    ret
+
+; -------------------------------------------------------------
+; Print Out Memory Info here
+; The Buffer is in MemChkBufOffset
+; -------------------------------------------------------------
+PrintMemInfo:
+    push    esi
+    push    edi
+    push    ecx
+
+    mov     esi, MemChkBufOffset
+    mov     ecx, [MemNumOffset]
+.loop:
+    mov     edx, 5
+    mov     edi, ARDStructOffset
+.1:
+    push    dword [esi]
+    call    DispInt
+    pop     eax
+    stosd
+    add     esi, 4
+    dec     edx
+    cmp     edx, 0
+    jnz     .1
+    call    DispReturn
+    cmp     dword [dwTypeOffset], 1
+    jne     .2
+    mov     eax, [dwBaseAddrLowOffset]
+    add     eax, [dwLengthLowOffset]
+    cmp     eax, [dwMemSize]
+    jb      .2
+    mov     [dwMemSize], eax
+.2:
+    loop    .loop
+
+    call    DispReturn
+    push    szRAMSizeOffset
+    call    DispStr
+    add     esp, 4
+
+    push    dword [dwMemSize]
+    call    DispInt
+    add     esp, 4
+
+    pop     ecx
+    pop     edi
+    pop     esi
     ret
 ; ----------------------------------------------------
 SegCode32Len        equ         $ - LABEL_SEG_CODE32
@@ -249,7 +319,7 @@ SelectorPageTbl     equ     LABEL_DESC_PAGE_TBL - LABEL_GDT
 ; ==============================================================
 ; Data 1 Section
 ; ==============================================================
-[SECTION .data1]
+[SECTION .data]
 ALIGN   32
 [BITS   32]
 LABEL_DATA:
@@ -258,6 +328,43 @@ SPValueInRealMode       dw      0
 PMMessage               db      "In Protect Mode Now, with PAGING!!! ^_^", 0
 OffsetPMMessage         equ     PMMessage - $$
 DataLen                 equ     $ - LABEL_DATA
+
+; Memory Check Buffer
+MemChkBuf:
+    times   512         db      0
+MemChkBufOffset         equ     MemChkBuf - $$
+
+MemChkTitle:
+    db  "BaseAddrL  BaseAddrH LengthLow LengthHigh    Type", 0Ah, 0
+MemChkTitleOffset       equ     MemChkTitle - $$
+
+ARDStruct:
+    dwBaseAddrLow:      dd      0
+    dwBaseAddrHigh:     dd      0
+    dwLengthLow:        dd      0
+    dwLengthHigh:       dd      0
+    dwType:             dd      0
+ARDStructOffset         equ     ARDStruct - $$
+    dwBaseAddrLowOffset equ     dwBaseAddrLow - $$
+    dwBaseAddrHighOffset equ    dwBaseAddrHigh - $$
+    dwLengthLowOffset   equ     dwLengthLow - $$
+    dwLengthHighOffset  equ     dwLengthHigh - $$
+    dwTypeOffset        equ     dwType - $$
+
+dwMemSize:
+                        dd      0
+dwMemSizeOffset         equ     dwMemSize - $$
+
+szRAMSize:  			db	    "RAM size:", 0
+szRAMSizeOffset         equ     szRAMSize - $$
+
+_szReturn:			    db	        0Ah, 0
+_dwDispPos:			    dd	        (80 * 6 + 0) * 2	; 屏幕第 6 行, 第 0 列。
+szReturn		        equ	        _szReturn	- $$
+dwDispPos               equ         _dwDispPos - $$
+
+MemNum:                 dd          0
+MemNumOffset            equ         MemNum - $$
 ; End of [SECTION .data1]
 
 ; ==============================================================
