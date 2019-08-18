@@ -242,12 +242,12 @@ PrintMemInfo:
     push    ecx
 
     mov     esi, MemChkBufOffset
-    mov     ecx, [MemNumOffset]
+    mov     ecx, [ds:MemNumOffset]
 .loop:
     mov     edx, 5
     mov     edi, ARDStructOffset
 .1:
-    push    dword [esi]
+    push    dword [ds:esi]
     call    DispInt
     pop     eax
     stosd
@@ -258,11 +258,11 @@ PrintMemInfo:
     call    DispReturn
     cmp     dword [dwTypeOffset], 1
     jne     .2
-    mov     eax, [dwBaseAddrLowOffset]
-    add     eax, [dwLengthLowOffset]
-    cmp     eax, [dwMemSize]
+    mov     eax, [ds:dwBaseAddrLowOffset]
+    add     eax, [ds:dwLengthLowOffset]
+    cmp     eax, [ds:dwMemSize]
     jb      .2
-    mov     [dwMemSize], eax
+    mov     [ds:dwMemSize], eax
 .2:
     loop    .loop
 
@@ -271,7 +271,7 @@ PrintMemInfo:
     call    DispStr
     add     esp, 4
 
-    push    dword [dwMemSize]
+    push    dword [ds:dwMemSize]
     call    DispInt
     add     esp, 4
 
