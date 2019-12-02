@@ -138,25 +138,54 @@ LABEL_REAL_ENTRY:
 
 ; -------------------------------------------------------------
 ; Memory Detection using 0x15 INT
-; ------------------------------------------------------------
+; -------------------------------------------------------------
+; note: check osdev for a more accurate thing to check
 DetectMemory:
-    mov     di, MemChkBuf
+    mov     di, MemChkBuf   ; es:di saves memory information
     xor     ebx, ebx
     mov     dword [MemNum], 0
-.loop:
-    mov     eax, 0xE820
-    mov     ecx, 20
-    mov     edx, 0534D4150h
-    int     15h
-    jc      LABEL_MEM_CHK_FAIL
-    add     di, 20
-    inc     dword [MemNum]
-    cmp     ebx, 0
-    jne     .loop
-    jmp     LABEL_MEM_CHK_OK
-LABEL_MEM_CHK_FAIL:
-    mov     dword [MemNum], 0
-LABEL_MEM_CHK_OK:
+.do_e820:
+    xor     ebx, ebx    ; ebx be 0 at start
+    xor     bp, bp
+    mov     edx, 0x0534D4150    ; Place "SMAP" into edx
+    mov     eax, 0xE820 ; E820!
+    mov     [es:di + 20], dword 1   ; force a valid ACPI 3.X entry
+    mov     ecx, 24 ; ask for 24 bytes, may include a ACPI 3.x entry
+    int     0x15    ; do E820
+    jc  short   .failed   ; sorry, failed
+    mov     edx, 0x0534D4150    ; some BIOSes trash this register
+    cmp     eax, edx    ; eax must be set to "SMAP" if success
+    jne short   .failed
+    test    ebx, ebx    ; ebx = 0 --> list is only one entry long
+    je  short   .failed
+    jmp short   .jmpin
+.e8201p:
+    mov     eax, 0xE820 ; eax, ecx get trashed on each int0x15 call
+    mov     [es:di + 20], dword 1   ; again
+    mov     ecx, 24
+    int     0x15    ; do E820
+    jc  short .e820f    ; carry --> end of list already reached
+    mov     edx, 0x0534D4150    ; repair potentially trashed register
+.jmpin:
+    jcxz    .skipent    ; skip any 0 length entries
+    cmp     cl, 20  ; check if we get a 24 byte ACPI 3.x response
+    jbe     short .notext
+    test    byte [es:di + 20], 1    ; if so: is the "ignore this data" bit clear?
+    je  short .skipent
+.notext:
+    mov     ecx, [es:di + 8]    ; get lower uint32_t of memory region length
+    or      ecx, [es:di + 12]   ; "or" it with upper uint32_t to test zero
+    jz      .skipent    ; if length uint64_t is 0, skip the entry
+    inc     dword [MemNum]  ; got a good entry, ++ count
+    add     di, 24  ; next
+.skipent:
+    test    ebx, ebx    ; if ebx->0, list is complete
+    jne short   .e8201p ; another E820
+.e820f:
+    clc
+    ret
+.failed:
+    stc
     ret
 
 ; ==============================================================
@@ -166,8 +195,6 @@ LABEL_MEM_CHK_OK:
 [BITS    32]
 
 LABEL_SEG_CODE32:
-    call    SetupPaging
-
     mov     ax, SelectorData
     mov     ds, ax                                  ; Data Selector
     mov     ax, SelectorVideo
@@ -189,6 +216,8 @@ CheckMemory:
     call    PrintMemInfo
     call    DispReturn
 
+    call    SetupPaging
+
     ; Display a String
     push    OffsetPMMessage
     call    DispStr
@@ -196,26 +225,40 @@ CheckMemory:
 
     jmp     SelectorCode16:0
 
+; SetupPaging - set up paging based on current available memory
 SetupPaging:
     ; Linear Address equals physical address
 
-    ; Initialize Page Directory
+    xor     edx, edx
+    mov     eax, [dwMemSize]
+    mov     ebx, 400000h    ; one page: 4KB, 1024 pages: 4M
+    div     ebx ; eax = eax / ebx, edx = eax % ebx
+    mov     ecx, eax
+    test    edx, edx    ; do we have reminder?
+    jz      .edx_zero
+    inc     ecx ; have a reminder, increase ecx
+.edx_zero:
+    push    ecx
+
+    ; Initialize page dir
     mov     ax, SelectorPageDir
     mov     es, ax
-    mov     ecx, 1024                               ; 1024 Entries in Page Directory, 1024 * 4bytes = 4KiB
     xor     edi, edi
     xor     eax, eax
     mov     eax, PageTblBase | PG_P | PG_USU | PG_RWW
 
-.1:
-    stosd                                           ; Store EAX at ES:EDI, EDI = EDI + 4
-    add     eax, 4096                               ; 4096 -> 2^12, 4K, each page table
+.1
+    stosd
+    add     eax, 4096
     loop    .1
 
     ; Initialize Page Table
     mov     ax, SelectorPageTbl                     ; Now for Page Table
     mov     es, ax
-    mov     ecx, 1024 * 1024                        ; 1024 Page Table Entries, 1024 Page Tables
+    pop     eax
+    mov     ebx, 1024                        ; 1024 Page Table Entries, 1024 Page Tables
+    mul     ebx     ; total: eax * 1024 page tables
+    mov     ecx, eax
     xor     edi, edi
     xor     eax, eax
     mov     eax, PG_P | PG_USU | PG_RWW             ; Base Address -> 0
@@ -235,6 +278,7 @@ SetupPaging:
     nop
 
     ret
+; --------- end of set up paging ---------
 
 ; -------------------------------------------------------------
 ; Print Out Memory Info here
@@ -248,13 +292,13 @@ PrintMemInfo:
     mov     esi, MemChkBufOffset
     mov     ecx, [ds:MemNumOffset]
 .loop:
-    mov     edx, 5
+    mov     edx, 6
     mov     edi, ARDStructOffset
 .1:
     push    dword [ds:esi]
     call    DispInt
     pop     eax
-    stosd
+    stosd   ; store EAX at [ES:EDI]
     add     esi, 4
     dec     edx
     cmp     edx, 0
@@ -340,7 +384,7 @@ MemChkBufOffset         equ     MemChkBuf - $$
 
 MemChkTitle:
     db  "Start Memory Check..........", 0Ah
-    db  "BaseAddrL  BaseAddrH LengthLow LengthHigh    Type", 0Ah, 0
+    db  "BaseAddrL  BaseAddrH LengthLow LengthHigh    Type   ACPI3.x", 0Ah, 0
 MemChkTitleOffset       equ     MemChkTitle - $$
 
 ARDStruct:
@@ -349,6 +393,7 @@ ARDStruct:
     dwLengthLow:        dd      0
     dwLengthHigh:       dd      0
     dwType:             dd      0
+    acpi_resp:          dd      0   ; ACPI responce
 ARDStructOffset         equ     ARDStruct - $$
     dwBaseAddrLowOffset equ     dwBaseAddrLow - $$
     dwBaseAddrHighOffset equ    dwBaseAddrHigh - $$
