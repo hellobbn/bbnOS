@@ -120,3 +120,23 @@ DispReturn:
 	ret
 ;; DispReturn 结束
 
+;; clear framebuffer
+ClearScreen:
+    push    edi
+    push    ecx
+    push    eax
+    mov     cx, 80 * 25
+    mov     ah, 0FH
+    mov     al, 0x20
+    xor		edi, edi
+    mov     [gs:edi], ax
+.1:
+    mov     [gs:edi], ax
+    add     edi, 2
+    loop    .1
+.2:
+    pop     eax
+    pop     ecx
+    pop     edi
+	ret
+;; end of ClearScreen

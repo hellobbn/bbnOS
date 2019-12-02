@@ -178,6 +178,10 @@ LABEL_SEG_CODE32:
 
     mov     esp, TopOfStack
 
+    ; clear the framebuffer here
+    call    ClearScreen
+
+CheckMemory:
     push    MemChkTitleOffset
     call    DispStr
     add     esp, 4
@@ -335,6 +339,7 @@ MemChkBuf:
 MemChkBufOffset         equ     MemChkBuf - $$
 
 MemChkTitle:
+    db  "Start Memory Check..........", 0Ah
     db  "BaseAddrL  BaseAddrH LengthLow LengthHigh    Type", 0Ah, 0
 MemChkTitleOffset       equ     MemChkTitle - $$
 
@@ -359,7 +364,7 @@ szRAMSize:  			db	    "RAM size:", 0
 szRAMSizeOffset         equ     szRAMSize - $$
 
 _szReturn:			    db	        0Ah, 0
-_dwDispPos:			    dd	        (80 * 6 + 0) * 2	; 屏幕第 6 行, 第 0 列。
+_dwDispPos:			    dd	        (80 * 1 + 0) * 2	; 屏幕第 1 行, 第 0 列。
 szReturn		        equ	        _szReturn	- $$
 dwDispPos               equ         _dwDispPos - $$
 
