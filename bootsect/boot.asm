@@ -82,8 +82,18 @@ LABEL_START:
 
     call    DetectMemory
 
+    ; lets load IDT here
+    xor     eax, eax
+    mov     ax, ds
+    shl     eax, 4
+    add     eax, LABEL_IDT
+    mov     dword [IdtPtr + 2], eax
+
     ; Disable Interrupt
     cli
+
+    ; load idt
+    lidt    [IdtPtr]
 
     ; Open Address Line A20
     in      al, 92h
@@ -239,9 +249,17 @@ LABEL_SEG_CODE32:
     call    DispStr
     add     esp, 4
 
+    ; do an interrupt here
+    call    Init8259A
+    int     0x80    ; do a test interrupt
+    sti
     jmp     $
 
+    jmp     SelectorCode16:0
+
+; -------------------------------------------------------------
 ; SetupPaging - set up paging based on current available memory
+; -------------------------------------------------------------
 SetupPaging:
     ; Linear Address equals physical address
     xor     edx, edx
@@ -346,9 +364,95 @@ PrintMemInfo:
     pop     edi
     pop     esi
     ret
-; ----------------------------------------------------
+
+; -------------------------------------------------------------
+; io_delay - delay some cycles
+; -------------------------------------------------------------
+io_delay:
+    nop
+    nop
+    nop
+    nop
+    ret
+
+; -------------------------------------------------------------
+; Init 8259A - Initialize 8259A 
+; -------------------------------------------------------------
+Init8259A:
+    mov     al, 0x11
+    out     0x20, al    ; master 8259A, ICW1
+    call    io_delay    ; wait
+
+    out     0xA0, al    ; slave 8259A, ICW1
+    call    io_delay    ; wait
+
+    mov     al, 0x20    ; IRQ0 -> INT32
+    out     0x21, al    ; master 8259A, ICW2
+    call    io_delay
+
+    mov     al, 0x28    ; IRQ8 -> INT40
+    out     0xA1, al    ; slave 8259A, ICW2
+    call    io_delay
+
+    mov     al, 0x04
+    out     0x21, al    ; master 8259A, ICW3
+    call    io_delay
+
+    mov     al, 0x02
+    out     0xA1, al    ; slave 8259A, ICW3
+    call    io_delay
+
+    mov     al, 0x01
+    out     0x21, al    ; master 8259A, ICW4
+    call    io_delay
+
+    out     0xA1, al    ; slave 8259A, ICW4
+    call    io_delay
+
+    mov     al, 11111110b   ; only timer
+    ; mov   al, 11111111b   ; none
+    out     0x21, al    ; master 8259A, OCW1
+    call    io_delay
+
+    mov     al, 11111111b   ; none
+    out     0xA1, al
+    call    io_delay
+
+    ret
+
+; -------------------------------------------------------------
+; SpuriousHandler - common interrupt handler
+; -------------------------------------------------------------
+_SpuriousHandler:
+SpuriousHandler equ     _SpuriousHandler - $$   ; offset from current section
+    mov     ah, 0Ch
+    mov     al, '!'
+    mov     [gs:(80 * 1 + 75) * 2], ax      ; row 1
+    iretd
+
+; -------------------------------------------------------------
+; UserHandler - user defined handler for specific interrupt
+; -------------------------------------------------------------
+_UserHandler:
+UserHandler     equ     _UserHandler - $$
+    mov     ah, 0Ch
+    mov     al, 'I'
+    mov     [gs:(80 * 2 + 75) * 2], ax
+    iretd
+
+; -------------------------------------------------------------
+; ClockHandler - handler timer interrupt
+; -------------------------------------------------------------
+_ClockHandler:
+ClockHandler    equ     _ClockHandler - $$
+    inc     byte [gs:((80 * 0 + 70) * 2)]   ; row 0, column 70
+    mov     al, 0x20
+    out     0x20, al ; send EOI
+    iretd
+    
 SegCode32Len        equ         $ - LABEL_SEG_CODE32
 
+; 
 ; ==============================================================
 ; GDT
 ; ==============================================================
@@ -384,7 +488,7 @@ SelectorFlatRW      equ     LABEL_DESC_FLAT_RW  - LABEL_GDT
 ; End of [SECTION .gdt]
 
 ; ==============================================================
-; Data 1 Section
+; Data Section
 ; ==============================================================
 [SECTION .data]
 ALIGN   32
@@ -482,3 +586,25 @@ LABEL_GO_BACK_TO_REAL:
     jmp     0:LABEL_REAL_ENTRY
 
 Code16Len               equ     $ - LABEL_SEG_CODE16
+
+; =============================================================
+; IDT SECTION
+; =============================================================
+[SECTION .idt]
+ALIGN 32
+[BITS 32]
+LABEL_IDT:
+%rep 32
+    ; Gate  Target selector Offset          DCount  Attribute
+    Gate    SelectorCode32, SpuriousHandler, 0, DA_386IGate     ; for all 256 interrupts, use the same thing
+%endrep
+.0x20: Gate SelectorCode32, ClockHandler,    0, DA_386IGate      ; only for 0x20 int
+%rep 95
+    Gate    SelectorCode32, SpuriousHandler, 0, DA_386IGate
+%endrep
+.0x80: Gate SelectorCode32, UserHandler,     0, DA_386IGate
+
+IdtLen                  equ     $ - LABEL_IDT
+IdtPtr                  dw      IdtLen - 1      ; limit
+                        dd      0               ; base address
+
