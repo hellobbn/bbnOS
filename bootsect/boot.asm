@@ -3,8 +3,15 @@
 %include    "./boot.inc"
 %include    "./lib.inc"
 
-PageDirBase             equ         200000h         ; Page Directory Start: 2M, Address
-PageTblBase             equ         201000h         ; Page Table Start: 2M + 4K
+PageDirBase0            equ         200000h         ; Page Directory Start: 2M, Address
+PageTblBase0            equ         201000h         ; Page Table Start: 2M + 4K
+PageDirBase1            equ         210000h
+PageTblBase1            equ         211000h
+
+LinearAddrDemo          equ         00401000h
+ProcFoo                 equ         00401000h
+ProcBar                 equ         00501000h
+ProcPagingDemo          equ         00301000h
 
 jmp     LABEL_START
 
@@ -197,6 +204,7 @@ DetectMemory:
 LABEL_SEG_CODE32:
     mov     ax, SelectorData
     mov     ds, ax                                  ; Data Selector
+    mov     es, ax
     mov     ax, SelectorVideo
     mov     gs, ax                                  ; Video Selector
 
@@ -208,7 +216,12 @@ LABEL_SEG_CODE32:
     ; clear the framebuffer here
     call    ClearScreen
 
-CheckMemory:
+    ; entered protected mode, display message
+    push    PMMessageOffset
+    call    DispStr
+    add     esp, 4
+
+    ; print memory message
     push    MemChkTitleOffset
     call    DispStr
     add     esp, 4
@@ -216,21 +229,23 @@ CheckMemory:
     call    PrintMemInfo
     call    DispReturn
 
+    ;call    PagingDemo ; deleted, unable to run.
+
+    ; paging here
     call    SetupPaging
 
     ; Display a String
-    push    OffsetPMMessage
+    push    osOkMessageOffset
     call    DispStr
     add     esp, 4
 
-    jmp     SelectorCode16:0
+    jmp     $
 
 ; SetupPaging - set up paging based on current available memory
 SetupPaging:
     ; Linear Address equals physical address
-
     xor     edx, edx
-    mov     eax, [dwMemSize]
+    mov     eax, [dwMemSizeOffset]
     mov     ebx, 400000h    ; one page: 4KB, 1024 pages: 4M
     div     ebx ; eax = eax / ebx, edx = eax % ebx
     mov     ecx, eax
@@ -238,28 +253,27 @@ SetupPaging:
     jz      .edx_zero
     inc     ecx ; have a reminder, increase ecx
 .edx_zero:
-    push    ecx
+    mov     [PageTableNumber], ecx
 
     ; Initialize page dir
-    mov     ax, SelectorPageDir
+    mov     ax, SelectorFlatRW
     mov     es, ax
-    xor     edi, edi
+    mov     edi, PageDirBase0
     xor     eax, eax
-    mov     eax, PageTblBase | PG_P | PG_USU | PG_RWW
+    mov     eax, PageTblBase0 | PG_P | PG_USU | PG_RWW
 
-.1
+.1:
     stosd
     add     eax, 4096
     loop    .1
 
     ; Initialize Page Table
-    mov     ax, SelectorPageTbl                     ; Now for Page Table
-    mov     es, ax
-    pop     eax
+    xor     eax, eax
+    mov     ax, [PageTableNumber]                     ; Now for Page Table
     mov     ebx, 1024                        ; 1024 Page Table Entries, 1024 Page Tables
     mul     ebx     ; total: eax * 1024 page tables
     mov     ecx, eax
-    xor     edi, edi
+    mov     edi, PageTblBase0
     xor     eax, eax
     mov     eax, PG_P | PG_USU | PG_RWW             ; Base Address -> 0
 
@@ -268,7 +282,7 @@ SetupPaging:
     add     eax, 4096
     loop    .2
 
-    mov     eax, PageDirBase
+    mov     eax, PageDirBase0
     mov     cr3, eax                                ; Move PageDirBase to cr3 without modifying any params
     mov     eax, cr0
     or      eax, 80000000h
@@ -276,6 +290,10 @@ SetupPaging:
     jmp     short .3
 .3:
     nop
+
+    push    pagingOKMsgOffset
+    call    DispStr
+    add     esp, 4
 
     ret
 ; --------- end of set up paging ---------
@@ -290,12 +308,12 @@ PrintMemInfo:
     push    ecx
 
     mov     esi, MemChkBufOffset
-    mov     ecx, [ds:MemNumOffset]
+    mov     ecx, [MemNumOffset]
 .loop:
     mov     edx, 6
     mov     edi, ARDStructOffset
 .1:
-    push    dword [ds:esi]
+    push    dword [esi]
     call    DispInt
     pop     eax
     stosd   ; store EAX at [ES:EDI]
@@ -306,11 +324,12 @@ PrintMemInfo:
     call    DispReturn
     cmp     dword [dwTypeOffset], 1
     jne     .2
-    mov     eax, [ds:dwBaseAddrLowOffset]
-    add     eax, [ds:dwLengthLowOffset]
-    cmp     eax, [ds:dwMemSize]
+    xor     eax, eax
+    mov     eax, [dwBaseAddrLowOffset]
+    add     eax, [dwLengthLowOffset]
+    cmp     eax, [dwMemSizeOffset]
     jb      .2
-    mov     [ds:dwMemSize], eax
+    mov     [dwMemSizeOffset], eax
 .2:
     loop    .loop
 
@@ -319,7 +338,7 @@ PrintMemInfo:
     call    DispStr
     add     esp, 4
 
-    push    dword [ds:dwMemSize]
+    push    dword [dwMemSizeOffset]
     call    DispInt
     add     esp, 4
 
@@ -342,9 +361,9 @@ LABEL_DESC_CODE32:      Descriptor          0,   SegCode32Len - 1,       DA_C + 
 LABEL_DESC_CODE16:      Descriptor          0,             0ffffh,               DA_C
 LABEL_DESC_DATA:        Descriptor          0,        DataLen - 1,             DA_DRW
 LABEL_DESC_STACK:       Descriptor          0,         TopOfStack,    DA_DRWA + DA_32
-LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             DA_DRW + DA_DPL3
-LABEL_DESC_PAGE_DIR:    Descriptor PageDirBase,              4095,             DA_DRW
-LABEL_DESC_PAGE_TBL:    Descriptor PageTblBase,              1023,             DA_DRW | DA_LIMIT_4K
+LABEL_DESC_VIDEO:       Descriptor    0B8000h,             0ffffh,             DA_DRW
+LABEL_DESC_FLAT_C:      Descriptor          0,            0fffffh,  DA_CR | DA_32 | DA_LIMIT_4K
+LABEL_DESC_FLAT_RW:     Descriptor          0,            0fffffh,  DA_DRW | DA_LIMIT_4K
 ; End of GDT
 
 ; Gate
@@ -360,8 +379,8 @@ SelectorCode16      equ     LABEL_DESC_CODE16   - LABEL_GDT
 SelectorData        equ     LABEL_DESC_DATA     - LABEL_GDT
 SelectorStack       equ     LABEL_DESC_STACK    - LABEL_GDT
 SelectorVideo       equ     LABEL_DESC_VIDEO    - LABEL_GDT
-SelectorPageDir     equ     LABEL_DESC_PAGE_DIR - LABEL_GDT
-SelectorPageTbl     equ     LABEL_DESC_PAGE_TBL - LABEL_GDT
+SelectorFlatC       equ     LABEL_DESC_FLAT_C   - LABEL_GDT
+SelectorFlatRW      equ     LABEL_DESC_FLAT_RW  - LABEL_GDT
 ; End of [SECTION .gdt]
 
 ; ==============================================================
@@ -373,8 +392,15 @@ ALIGN   32
 LABEL_DATA:
 SPValueInRealMode       dw      0
 ; Strings
-PMMessage               db      "In Protect Mode Now, with PAGING!!! ^_^", 0
-OffsetPMMessage         equ     PMMessage - $$
+PMMessage               db      "In Protect Mode Now, setting up..... ^_^", 0Ah, 0
+PMMessageOffset         equ     PMMessage - $$
+
+osOkMessage             db      "Done, Welcome to BBN OS!", 0Ah, 0
+osOkMessageOffset       equ     osOkMessage - $$
+
+pagingOKMsg             db      "Done Set up paging.", 0Ah, 0
+pagingOKMsgOffset       equ     pagingOKMsg - $$
+
 DataLen                 equ     $ - LABEL_DATA
 
 ; Memory Check Buffer
@@ -400,6 +426,7 @@ ARDStructOffset         equ     ARDStruct - $$
     dwLengthLowOffset   equ     dwLengthLow - $$
     dwLengthHighOffset  equ     dwLengthHigh - $$
     dwTypeOffset        equ     dwType - $$
+    dwAcpiResp          equ     acpi_resp - $$
 
 dwMemSize:
                         dd      0
@@ -415,7 +442,10 @@ dwDispPos               equ         _dwDispPos - $$
 
 MemNum:                 dd          0
 MemNumOffset            equ         MemNum - $$
-; End of [SECTION .data1]
+
+_PageTableNumber        dd          0
+PageTableNumber         equ         _PageTableNumber - $$
+; End of [SECTION .data]
 
 ; ==============================================================
 ; Global Stack
