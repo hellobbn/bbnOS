@@ -31,16 +31,16 @@ all: bin
 
 # Optional: QEMU
 qemu: iso
-	qemu-system-i386 -cdrom ${ISO_OUT}
+	qemu-system-i386 -fda ${OUT_IMG}
 
 qemu_gdb: iso
-	qemu-system-i386 -cdrom ${ISO_OUT} -s -S
+	qemu-system-i386 -fda ${OUT_IMG} -s -S
 
 qemu_nogra: iso
-	qemu-system-i386 -cdrom ${ISO_OUT} -nographic
+	qemu-system-i386 -fda ${OUT_IMG} -nographic
 
 qemu_nogra_gdb: iso
-	qemu-system-i386 -cdrom ${ISO_OUT} -nographic -s -S
+	qemu-system-i386 -fda ${OUT_IMG} -nographic -s -S
 
 # iso
 iso: bin ${MOUNT_DIR}
@@ -51,20 +51,13 @@ iso: bin ${MOUNT_DIR}
 	sudo umount ${MOUNT_DIR}
 
 # make kernel binary
-bin: prepare ${BOOT_OBJS} ${LOADER_OBJS}
-	objcopy -O binary ${BOOT_OBJS} ${BOOT_BIN}
+bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_OBJS}
+	nasm ${BOOT_ASM_SOURCES} -o ${BOOT_BIN}
 	objcopy -O binary ${LOADER_OBJS} ${LOADER_BIN}
 
 # linking here
-${BOOT_OBJS}: ${BOOT_ASM_OBJS}
-	${LD} ${LD_FLAGS} -T bootsect/link16.ld $^ -o $@ 
-
 ${LOADER_OBJS}: ${LOADER_ASM_OBJS}
 	${LD} ${LD_FLAGS} -T bootsect/link_loader.ld $^ -o $@
-
-# compile .asm files to .o files
-${BOOT_ASM_OBJS}: ${BUILD_DIR}/${BOOTSECT_DIR}/%.obj: ${BOOTSECT_DIR}/%.asm
-	${ASM} ${LOADER_ASM_FLAGS} -o $@ $<
 
 ${LOADER_ASM_OBJS}: ${BUILD_DIR}/${BOOTSECT_DIR}/%.obj: ${BOOTSECT_DIR}/%.asm
 	${ASM} ${LOADER_ASM_FLAGS} -o $@ $<

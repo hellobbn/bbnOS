@@ -1,5 +1,5 @@
 ; asmsyntax=nasm
-
+org 0x7C00
 ; -------------------------------------------------------------
 ; Some macro
 ; -------------------------------------------------------------
@@ -108,10 +108,10 @@ b0dd                db  0
 
 ; string
 LoaderFileName      db  "LOADER  BIN", 0
-MessageLength       equ 9
-BootMessage         db  "Booting  "
-Message1            db  "Ready.   "
-Message2            db  "NO LOADER"
+MessageLength       equ 12
+BootMessage         db  "LOADER FOUND"
+Message1            db  "Ready.      "
+Message2            db  "NO LOADER   "
 
 ; -------------------------------------------------------------
 ; DispStr - print out a string(0, 1, 2)
