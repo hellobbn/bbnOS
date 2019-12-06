@@ -51,16 +51,9 @@ iso: bin ${MOUNT_DIR}
 	sudo umount ${MOUNT_DIR}
 
 # make kernel binary
-bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_OBJS}
+bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_ASM_SOURCES}
 	nasm ${BOOT_ASM_SOURCES} -o ${BOOT_BIN}
-	objcopy -O binary ${LOADER_OBJS} ${LOADER_BIN}
-
-# linking here
-${LOADER_OBJS}: ${LOADER_ASM_OBJS}
-	${LD} ${LD_FLAGS} -T bootsect/link_loader.ld $^ -o $@
-
-${LOADER_ASM_OBJS}: ${BUILD_DIR}/${BOOTSECT_DIR}/%.obj: ${BOOTSECT_DIR}/%.asm
-	${ASM} ${LOADER_ASM_FLAGS} -o $@ $<
+	nasm ${LOADER_ASM_SOURCES} -o ${LOADER_BIN}
 
 # make build directory
 prepare:

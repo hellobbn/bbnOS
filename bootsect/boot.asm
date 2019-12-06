@@ -8,6 +8,8 @@ BaseOfLoader        equ     0x9000  ; LOADER.BIN loaded here - segment
 OffsetOfLoader      equ     0x100   ; LOADER.BIN loaded here - offset
 RootDirSectors      equ     14      ; root space
 SectorNoOfRootDir   equ     19      ; the first sector of root directory
+SectorNoOfFAT1      equ     1       ; the first sector of FAT1
+DeltaSectorNo       equ     17      ; some magic, to find the actual sector number
 
 ; -------------------------------------------------------------
 ; header of FAT12
@@ -44,6 +46,16 @@ LABEL_START:
     mov     es, ax
     mov     ss, ax
     mov     sp, BaseOfStack
+
+    ; clear screen
+    mov     ax, 0x0600
+    mov     bx, 0x0700
+    mov     cx, 0
+    mov     dx, 0x184F
+    int     0x10
+
+    mov     dh, 0
+    call    DispStr
 
     xor     ah, ah  ; ah = 00h
     xor     dl, dl  ; driver = 0
@@ -95,21 +107,56 @@ LABEL_NO_LOADER:
     call    DispStr
     jmp     $   ; sad
 LABEL_LOADER_FOUND:
-    mov     dh, 0
+    mov     ax, RootDirSectors
+    and     di, 0xFFE0  ; reset to the start of the entry
+    add     di, 0x1A    ; the first cluster saved here
+    mov     cx, word [es:di]    ; move it to cx
+    push    cx
+    add     cx, ax  ; the real sector: X + RootDirSectors + 19 - 2
+    add     cx, DeltaSectorNo   ; cx is now the actual sector
+    mov     ax, BaseOfLoader
+    mov     es, ax
+    mov     bx, OffsetOfLoader
+    mov     ax, cx  ; save cx to ax
+LABEL_GOON_LOADING_FILE:
+    push    ax
+    push    bx
+    mov     ah, 0x0E
+    mov     al, '.'
+    mov     bl, 0x0F
+    int     10h     ; print '.' for each sector read
+    pop     bx
+    pop     ax
+
+    mov     cl, 1
+    call    ReadSector
+    pop     ax      ; the cluster of the loader
+    call    GetFATEntry
+    cmp     ax, 0x0FFF  ; the final entry is marked 0x0FFF
+    jz      LABEL_FILE_LOADED
+    push    ax  ; ax points to the next cluster number
+    mov     dx, RootDirSectors
+    add     ax, dx
+    add     ax, DeltaSectorNo
+    add     bx, [BPB_BytesPerSec]   ; bx is the position where the loader is loaded
+    jmp     LABEL_GOON_LOADING_FILE
+LABEL_FILE_LOADED:
+    mov     dh, 1
     call    DispStr
-    jmp     $   ; stop here
+
+    jmp     BaseOfLoader:OffsetOfLoader
 
 ; -------------------------------------------------------------
 ; Some variables
 ; -------------------------------------------------------------
 wRootDirSizeForLoop dw  RootDirSectors
 wSectorNo           dw  0
-b0dd                db  0
+bOdd                db  0
 
 ; string
 LoaderFileName      db  "LOADER  BIN", 0
 MessageLength       equ 12
-BootMessage         db  "LOADER FOUND"
+BootMessage         db  "BOOTING     "
 Message1            db  "Ready.      "
 Message2            db  "NO LOADER   "
 
@@ -160,6 +207,52 @@ ReadSector:
     add     esp, 2
     pop     bp
 
+    ret
+
+; -------------------------------------------------------------
+; GetFATEntry: in the stack: the cluster of the sector
+; -------------------------------------------------------------
+GetFATEntry:
+    push    es
+    push    bx
+    push    ax
+    mov     ax, BaseOfLoader
+    sub     ax, 0100h   ; reside some space to save FAT1
+    mov     es, ax
+    pop     ax  ; ax - the cluster of the entry
+    mov     byte [bOdd], 0
+    mov     bx, 3
+    mul     bx  ; dx:ax = ax * bx
+    mov     bx, 2
+    div     bx  ; dx:ax / 2 = ax, dx:ax % 2 = dx
+                ; 2 FAT Entry -> 3 bytes
+    cmp     dx, 0
+    jz      LABEL_EVEN
+    mov     byte [bOdd], 1  ; set odd
+LABEL_EVEN:
+    ; now AX: FATEntry offset in FAT, actually in byte
+    xor     dx, dx
+    mov     bx, [BPB_BytesPerSec]
+    div     bx  ; AX <- the sector number for FATEntry
+                ; DX <- the offset to the sector
+    push    dx
+    mov     bx, 0
+    add     ax, SectorNoOfFAT1  ; in FAT1
+    mov     cl, 2   ; read 2 
+    call    ReadSector
+
+    pop     dx
+    add     bx, dx
+    mov     ax, [es:bx] ; get the entry
+    cmp     byte [bOdd], 1
+    jnz     LABEL_EVEN_2
+    shr     ax, 4
+LABEL_EVEN_2:
+    and     ax, 0FFFh
+
+LABEL_GET_FAT_ENTRY_OK:
+    pop     bx
+    pop     es
     ret
 
 times   510 - ($ - $$)      db  0
