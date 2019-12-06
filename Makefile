@@ -1,31 +1,39 @@
-BUILD_DIR = build
-BOOTSECT_DIR = bootsect
+# source code folders
+BUILD_DIR 			= 		build
+BOOTSECT_DIR 		= 		bootsect
 
-BOOT_ASM_SOURCES = ${BOOTSECT_DIR}/boot.asm
-BOOT_ASM_OBJS = ${BUILD_DIR}/${BOOTSECT_DIR}/boot.obj	# change .asm to .o
+# bootsect for floppy
+BOOT_ASM_SOURCES 	= 		${BOOTSECT_DIR}/boot.asm
+BOOT_BIN 			= 		${BUILD_DIR}/boot.bin		# boot binary
 
-LOADER_ASM_SOURCES = ${BOOTSECT_DIR}/loader.asm
-LOADER_ASM_OBJS = ${BUILD_DIR}/${BOOTSECT_DIR}/loader.obj
+# loader for kernel
+LOADER_ASM_SOURCES 	= ${BOOTSECT_DIR}/loader.asm
+LOADER_BIN 			= ${BUILD_DIR}/loader.bin	# the loader
 
-BOOT_OBJS = ${BUILD_DIR}/boot.elf
-LOADER_OBJS = ${BUILD_DIR}/loader.elf
+# the kernel
+KERNEL_ASM_SOURCES 	= ${BOOTSECT_DIR}/kernel.asm
+KERNEL_ASM_OBJS		= ${BOOTSECT_DIR}/kernel.obj
+KERNEL_BIN			= ${BUILD_DIR}/kernel.bin
 
-ISO_DIR = ${BUILD_DIR}/iso
-ISO_OUT = ${BUILD_DIR}/os.iso
-BOOT_BIN = ${BUILD_DIR}/boot.bin
-LOADER_BIN = ${BUILD_DIR}/loader.bin
+# the output iso
+OUT_IMG 			= ${BUILD_DIR}/os.img
+MOUNT_DIR 			= ${BUILD_DIR}/mnt
 
-ASM = nasm
-ASM_FLAGS = -f elf32
-BOOTSECT_ASM_FLAGS = -Ibootsect
+# build tools
+# ASM compiler
+ASM 				= nasm
+KERNEL_ASM_FLAGS 	= -f elf32
+BOOTSECT_ASM_FLAGS 	= -Ibootsect
+
+# C compiler
 CC = gcc
 CC_FLAGS = -c -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
 -Wall -Wextra
-LD = ld
-LD_FLAGS = -melf_i386
 
-MOUNT_DIR = ${BUILD_DIR}/mnt
-OUT_IMG = ${BUILD_DIR}/os.img
+# ther linker
+LD = ld
+KERNEL_LD_FLAGS = -s -m elf_i386
+
 
 all: bin
 
@@ -48,12 +56,18 @@ iso: bin ${MOUNT_DIR}
 	dd if=${BOOT_BIN} of=${OUT_IMG} bs=512 count=1 conv=notrunc
 	sudo mount -o loop ${OUT_IMG} ${MOUNT_DIR}
 	sudo cp ${LOADER_BIN} ${MOUNT_DIR} -v
+	sudo cp ${KERNEL_BIN} ${MOUNT_DIR} -v
 	sudo umount ${MOUNT_DIR}
 
 # make kernel binary
-bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_ASM_SOURCES}
+bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_ASM_SOURCES} ${KERNEL_BIN}
 	nasm ${BOOTSECT_ASM_FLAGS} ${BOOT_ASM_SOURCES} -o ${BOOT_BIN}
 	nasm ${BOOTSECT_ASM_FLAGS} ${LOADER_ASM_SOURCES} -o ${LOADER_BIN}
+
+# the kernel binary
+${KERNEL_BIN}: ${KERNEL_ASM_SOURCES}
+	${ASM} ${KERNEL_ASM_FLAGS} -o ${KERNEL_ASM_OBJS} ${KERNEL_ASM_SOURCES}
+	${LD} ${KERNEL_LD_FLAGS} -o ${KERNEL_BIN} ${KERNEL_ASM_OBJS}
 
 # make build directory
 prepare:
