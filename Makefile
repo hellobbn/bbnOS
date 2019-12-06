@@ -1,77 +1,100 @@
-# source code folders
-BUILD_DIR 			= 		build
-BOOTSECT_DIR 		= 		bootsect
+####################################################
+# Makefile for bbnOS Following the guide of OrangeS#
+####################################################
 
-# bootsect for floppy
-BOOT_ASM_SOURCES 	= 		${BOOTSECT_DIR}/boot.asm
-BOOT_BIN 			= 		${BUILD_DIR}/boot.bin		# boot binary
+## DIRs
+BUILD_DIR		= build
+MOUNT_POINT		= ${BUILD_DIR}/mnt
 
-# loader for kernel
-LOADER_ASM_SOURCES 	= ${BOOTSECT_DIR}/loader.asm
-LOADER_BIN 			= ${BUILD_DIR}/loader.bin	# the loader
+BOOT_DIR		= boot
+KERNEL_DIR		= kernel
+LIB_DIR			= lib
+INC_B_DIR		= boot/include
+INC_K_DIR		= include
 
-# the kernel
-KERNEL_ASM_SOURCES 	= ${BOOTSECT_DIR}/kernel.asm
-KERNEL_ASM_OBJS		= ${BOOTSECT_DIR}/kernel.obj
-KERNEL_BIN			= ${BUILD_DIR}/kernel.bin
+DIRS 			= ${BOOT_DIR} ${KERNEL_DIR} ${LIB_DIR}
+MKDIR			= ${patsubst %, ${BUILD_DIR}/%, ${DIRS}}
+MKDIR		   += ${BUILD_DIR}
+MKDIR          += ${MOUNT_POINT}
 
-# the output iso
-OUT_IMG 			= ${BUILD_DIR}/os.img
-MOUNT_DIR 			= ${BUILD_DIR}/mnt
+## Programs, flags, etc
+ASM				= nasm
+CC				= clang
+LD				= ld
+ASM_B_FLAGS		= -I ${INC_B_DIR}
+ASM_K_FLAGS		= -I ${INC_K_DIR} -f elf32
+C_FLAGS			= -c -I ${INC_K_DIR} -m32 -fno-builtin -Wall -Wextra -fno-stack-protector
+# TODO: this is dirty!
+LDFLAGS			= -s -m elf_i386 -Ttext 0x30400
 
-# build tools
-# ASM compiler
-ASM 				= nasm
-KERNEL_ASM_FLAGS 	= -f elf32
-BOOTSECT_ASM_FLAGS 	= -Ibootsect
+## This Program
+# For boot
+BOOT_ASM		= ${BOOT_DIR}/boot.asm
+BOOT      		= ${BUILD_DIR}/${BOOT_DIR}/boot.bin
 
-# C compiler
-CC = gcc
-CC_FLAGS = -c -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
--Wall -Wextra
+LOADER_ASM		= ${BOOT_DIR}/loader.asm
+LOADER      	= ${BUILD_DIR}/${BOOT_DIR}/loader.bin
 
-# ther linker
-LD = ld
-KERNEL_LD_FLAGS = -s -m elf_i386
+# For kernel
+KERN_ASMS		= ${wildcard ${KERNEL_DIR}/*.asm}
+KERN_C			= ${wildcard ${KERNEL_DIR}/*.c}
+KERN_ASM_OBJS	= ${patsubst %.asm, ${BUILD_DIR}/%.o, ${KERN_ASMS}}
+KERN_C_OBJS	    = ${patsubst %.c, ${BUILD_DIR}/%.o, ${KERN_C}}
 
+# For lib
+LIB_ASMS		= ${wildcard ${LIB_DIR}/*.asm}
+LIB_C			= ${wildcard ${LIB_DIR}/*.c}
+KERN_ASM_OBJS  += ${patsubst %.asm, ${BUILD_DIR}/%.o, ${LIB_ASMS}}
+KERN_C_OBJS    += ${patsubst %.c, ${BUILD_DIR}/%.o, ${LIB_C}}
 
-all: bin
+# For the out kernel
+KERNEL 			= ${BUILD_DIR}/kernel.bin
 
-# Optional: QEMU
-qemu: iso
-	qemu-system-i386 -fda ${OUT_IMG}
+## The output image
+IMG_OUT			= ${BUILD_DIR}/os.img
 
-qemu_gdb: iso
-	qemu-system-i386 -fda ${OUT_IMG} -s -S
+## rules
 
-qemu_nogra: iso
-	qemu-system-i386 -fda ${OUT_IMG} -nographic
+# all
+all: img
 
-qemu_nogra_gdb: iso
-	qemu-system-i386 -fda ${OUT_IMG} -nographic -s -S
+# (Optional QEMU)
+qemu: img
+	qemu-system-i386 -fda ${IMG_OUT}
 
-# iso
-iso: bin ${MOUNT_DIR}
-	dd if=/dev/zero of=${OUT_IMG} bs=512 count=2880
-	dd if=${BOOT_BIN} of=${OUT_IMG} bs=512 count=1 conv=notrunc
-	sudo mount -o loop ${OUT_IMG} ${MOUNT_DIR}
-	sudo cp ${LOADER_BIN} ${MOUNT_DIR} -v
-	sudo cp ${KERNEL_BIN} ${MOUNT_DIR} -v
-	sudo umount ${MOUNT_DIR}
+qemu_gdb: img
+	qemu-system-i386 -fda ${IMG_OUT} -s -S
 
-# make kernel binary
-bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_ASM_SOURCES} ${KERNEL_BIN}
-	nasm ${BOOTSECT_ASM_FLAGS} ${BOOT_ASM_SOURCES} -o ${BOOT_BIN}
-	nasm ${BOOTSECT_ASM_FLAGS} ${LOADER_ASM_SOURCES} -o ${LOADER_BIN}
+# build the image
+img: prepare ${BOOT} ${LOADER} ${KERNEL}
+	dd if=/dev/zero of=${IMG_OUT} bs=512 count=2880
+	dd if=${BOOT} of=${IMG_OUT} bs=512 count=1 conv=notrunc
+	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
+	sudo cp ${LOADER} ${MOUNT_POINT} -v
+	sudo cp ${KERNEL} ${MOUNT_POINT} -v
+	sudo umount ${MOUNT_POINT}
 
-# the kernel binary
-${KERNEL_BIN}: ${KERNEL_ASM_SOURCES}
-	${ASM} ${KERNEL_ASM_FLAGS} -o ${KERNEL_ASM_OBJS} ${KERNEL_ASM_SOURCES}
-	${LD} ${KERNEL_LD_FLAGS} -o ${KERNEL_BIN} ${KERNEL_ASM_OBJS}
+${BOOT}: ${BUILD_DIR}/%.bin: %.asm
+	${ASM} ${ASM_B_FLAGS} -o $@ $<
 
-# make build directory
-prepare:
-	mkdir -p ${BUILD_DIR} ${BUILD_DIR}/${BOOTSECT_DIR} ${MOUNT_DIR}
+${LOADER}: ${BUILD_DIR}/%.bin: %.asm
+	${ASM} ${ASM_B_FLAGS} -o $@ $<
 
+# FIXME: The linking sequence is important
+#        To be specific, the kernel.o compiled from kernel.asm must be compiled first
+${KERNEL}: ${KERN_C_OBJS} ${KERN_ASM_OBJS}
+	${LD} ${LDFLAGS} -o ${KERNEL} ${KERN_ASM_OBJS} ${KERN_C_OBJS}
+
+${KERN_C_OBJS}: ${BUILD_DIR}/%.o: %.c
+	${CC} ${C_FLAGS} -o $@ $<
+
+${KERN_ASM_OBJS}: ${BUILD_DIR}/%.o: %.asm
+	${ASM} ${ASM_K_FLAGS} -o $@ $<
+
+# make necessary dirs
+prepare:	
+	mkdir -p ${MKDIR}
+
+# clean
 clean:
-	rm -rf build
+	rm -rf ${BUILD_DIR}

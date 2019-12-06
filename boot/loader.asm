@@ -374,10 +374,42 @@ LABEL_PM_START:
 
     call    SetupPaging
 
-    mov     ah, 0Fh
-    mov     al, 'P'
-    mov     [gs:((80 * 0 + 39) * 2)], ax
+    ; All set, bring the kernel to memory
+    call    InitKernel
+
+    ; GO to the kernel
+    push    KernelJmpMsgOffset
+    call    PMDispStr
+    add     esp, 4
+    jmp     SelectorFlatC:KernelEntryPointPhyAddr
     jmp     $
+
+; -------------------------------------------------------------
+; InitKernel - bring the kernel to memory
+; -------------------------------------------------------------
+InitKernel:
+    xor     esi, esi
+    mov     cx, word [BaseOfKernelFilePhyAddr + 0x2C]   ; ELF header, the number of entry in program header table
+    movzx   ecx, cx    ; Move word to double word with zero-extension.
+    mov     esi, [BaseOfKernelFilePhyAddr + 0x1C]   ; ELF header, offset of program header table, which describes sections
+    add     esi, BaseOfKernelFilePhyAddr    ; KernelFileBase + offset
+.Begin:
+    mov     eax, [esi + 0]  ; the type?
+    cmp     eax, 0
+    jz      .NoAction
+    push    dword [esi + 0x10]   ; size
+    mov     eax, [esi + 0x04]   ; the offset
+    add     eax, BaseOfKernelFilePhyAddr
+    push    eax
+    push    dword [esi + 0x08]  ; the address to load
+    call    Memcpy
+    add     esp, 12
+.NoAction:
+    add     esi, 0x20
+    dec     ecx
+    jnz     .Begin
+
+    ret
 
 ; -------------------------------------------------------------
 ; SetupPaging - set up paging based on current available memory
@@ -474,7 +506,6 @@ PrintMemInfo:
 .2:
     loop    .loop
 
-    call    DispReturn
     push    szRAMSizeOffset
     call    PMDispStr
     add     esp, 4
@@ -496,8 +527,11 @@ PrintMemInfo:
 ALIGN   32
 [BITS 32]
 ; Some messages
-pagingOKMsg             db      "Done Set up paging.", 0Ah, 0
+pagingOKMsg             db      "- Done Set up paging.", 0Ah, 0
 pagingOKMsgOffset       equ     pagingOKMsg + BaseOfLoaderPhyAddr
+
+KernelJmpMsg            db      "- Kernel Loaded to memory, jumping to it", 0Ah, 0
+KernelJmpMsgOffset      equ     KernelJmpMsg + BaseOfLoaderPhyAddr
 
 ; Memory Check Buffer
 MemChkBuf:
@@ -505,7 +539,7 @@ MemChkBuf:
 MemChkBufOffset         equ     MemChkBuf + BaseOfLoaderPhyAddr
 
 MemChkTitle:
-    db  "Start Memory Check..........", 0Ah
+    db  "- Start Memory Check..........", 0Ah
     db  "BaseAddrL  BaseAddrH LengthLow LengthHigh    Type   ACPI3.x", 0Ah, 0
 MemChkTitleOffset       equ     MemChkTitle + BaseOfLoaderPhyAddr
 
@@ -528,7 +562,7 @@ dwMemSize:
                         dd      0
 dwMemSizeOffset         equ     dwMemSize + BaseOfLoaderPhyAddr
 
-szRAMSize:  			db	    "RAM size:", 0
+szRAMSize:  			db	    "- RAM size:", 0
 szRAMSizeOffset         equ     szRAMSize + BaseOfLoaderPhyAddr
 
 ; other macros
