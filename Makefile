@@ -17,7 +17,7 @@ LOADER_BIN = ${BUILD_DIR}/loader.bin
 
 ASM = nasm
 ASM_FLAGS = -f elf32
-LOADER_ASM_FLAGS = -f elf32 -Ibootsect
+BOOTSECT_ASM_FLAGS = -Ibootsect
 CC = gcc
 CC_FLAGS = -c -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
 -Wall -Wextra
@@ -52,8 +52,8 @@ iso: bin ${MOUNT_DIR}
 
 # make kernel binary
 bin: prepare ${BOOT_ASM_SOURCES} ${LOADER_ASM_SOURCES}
-	nasm ${BOOT_ASM_SOURCES} -o ${BOOT_BIN}
-	nasm ${LOADER_ASM_SOURCES} -o ${LOADER_BIN}
+	nasm ${BOOTSECT_ASM_FLAGS} ${BOOT_ASM_SOURCES} -o ${BOOT_BIN}
+	nasm ${BOOTSECT_ASM_FLAGS} ${LOADER_ASM_SOURCES} -o ${LOADER_BIN}
 
 # make build directory
 prepare:

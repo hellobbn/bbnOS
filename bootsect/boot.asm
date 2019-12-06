@@ -6,36 +6,13 @@ org 0x7C00
 BaseOfStack         equ     0x7C00  ; grow low, base of stack
 BaseOfLoader        equ     0x9000  ; LOADER.BIN loaded here - segment
 OffsetOfLoader      equ     0x100   ; LOADER.BIN loaded here - offset
-RootDirSectors      equ     14      ; root space
-SectorNoOfRootDir   equ     19      ; the first sector of root directory
-SectorNoOfFAT1      equ     1       ; the first sector of FAT1
-DeltaSectorNo       equ     17      ; some magic, to find the actual sector number
 
 ; -------------------------------------------------------------
 ; header of FAT12
 ; -------------------------------------------------------------
 jmp short LABEL_START   ; start to boot
 nop ; nop
-
-BS_OEMNAME              db          'ForrestY'  ; OEM string, 8 bytes
-BPB_BytesPerSec         dw          512 ; bytes each sector
-BPB_SecPerClus          db          1   ; sector per cluster
-BPB_RsvdSecCnt          dw          1   ; sector for Boot record 
-BPB_NumFATs             db          2   ; number of FATs
-BPB_RootEntCnt          dw          224 ; max file entry in root
-BPB_TotSec16            dw          2880    ; number of logic sectors
-BPB_Media               db          0xF0    ; media descriptor
-BPB_FATSz16             dw          9   ; sector each fat
-BPB_SecPerTrk           dw          18  ; sector each track
-BPB_NumHeads            dw          2   ; header number
-BPB_HiddSec             dd          0   ; hidden sector
-BPB_TotSec32            dd          0   ; 
-BS_DrvNum               db          0   ; int13 driver number
-BS_Reservedl            db          0   ; reserved
-BS_BootSig              db          29h ; extended symbol
-BS_VolID                dd          0   ; Volume serial
-BS_VolLab               db          'bbnOS_v0.1 '
-BS_FileSysType          db          'FAT12   '
+%include "fat12hdr.inc"
 
 ; =============================================================
 ; Start of BOOT.ASM
@@ -62,7 +39,7 @@ LABEL_START:
     int     13h ; reset drive
 
     ; Find LOADER.BIN in A Drive
-    mov     word [wSectorNo], SectorNoOfRootDir
+    mov     word [wSectorNo], SectorNoOfRootDirectory
 LABEL_SEARCH_IN_ROOT_DIR_BEGIN:
     cmp     word [wRootDirSizeForLoop], 0   ; chack if root is read over
     jz      LABEL_NO_LOADER
