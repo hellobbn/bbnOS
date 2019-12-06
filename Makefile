@@ -11,6 +11,7 @@ KERNEL_DIR		= kernel
 LIB_DIR			= lib
 INC_B_DIR		= boot/include
 INC_K_DIR		= include
+SCRIPT_DIR		= scripts
 
 DIRS 			= ${BOOT_DIR} ${KERNEL_DIR} ${LIB_DIR}
 MKDIR			= ${patsubst %, ${BUILD_DIR}/%, ${DIRS}}
@@ -25,7 +26,7 @@ ASM_B_FLAGS		= -I ${INC_B_DIR}
 ASM_K_FLAGS		= -I ${INC_K_DIR} -f elf32
 C_FLAGS			= -c -I ${INC_K_DIR} -m32 -fno-builtin -Wall -Wextra -fno-stack-protector
 # TODO: this is dirty!
-LDFLAGS			= -s -m elf_i386 -Ttext 0x30400
+LDFLAGS			= -T ${SCRIPT_DIR}/link.ld
 
 ## This Program
 # For boot
