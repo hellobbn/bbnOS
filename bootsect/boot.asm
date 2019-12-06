@@ -4,8 +4,6 @@ org 0x7C00
 ; Some macro
 ; -------------------------------------------------------------
 BaseOfStack         equ     0x7C00  ; grow low, base of stack
-BaseOfLoader        equ     0x9000  ; LOADER.BIN loaded here - segment
-OffsetOfLoader      equ     0x100   ; LOADER.BIN loaded here - offset
 
 ; -------------------------------------------------------------
 ; header of FAT12
@@ -14,6 +12,7 @@ jmp short LABEL_START   ; start to boot
 nop ; nop
 %include "fat12hdr.inc"
 
+%include "load.inc"
 ; =============================================================
 ; Start of BOOT.ASM
 ; =============================================================
