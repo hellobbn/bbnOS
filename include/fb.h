@@ -9,6 +9,7 @@ void fb_write_cell(unsigned int i, char c, unsigned char fg, unsigned char bg);
 void fb_clear();
 void fb_print(char* buf);
 void fb_print_hex(unsigned int num);
+void fb_print_dec(int num);
 
 /* Framebuffer colors starts here */
 #define     FB_CLOR_BLACK           0

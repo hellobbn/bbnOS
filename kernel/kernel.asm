@@ -1,6 +1,7 @@
 SelectorKernelCS        equ     8
 
 ; import function
+extern  k_start_msg
 extern  cstart
 
 ; global value
@@ -21,11 +22,12 @@ StackTop:               ; top of stack
 global _start
 
 _start:
+    call    k_start_msg ; print kernel message
     mov     esp, StackTop
 
-    sgdt    [gdt_ptr]
-    call    cstart
-    lgdt    [gdt_ptr]
+    sgdt    [gdt_ptr]   ; save the loader's GDT ptr to the given point
+    call    cstart      ; copy the content of GDT
+    lgdt    [gdt_ptr]   ; reload GDT ptr
 
     jmp     SelectorKernelCS:csinit
     

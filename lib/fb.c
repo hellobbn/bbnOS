@@ -107,6 +107,7 @@ void fb_clear() {
  *  The actual print function, it automatically moves cursor and position.
  *  Note that if you write something using `fb_writer()`, then the use of 
  *  `fb_print` my override the string printed by `fb_writer()`
+ *  @note the cursor moves, if the position is out of bondary, it will start over
  * 
  *  @param buf  The input string, must be ended with `\0`
  */
@@ -189,5 +190,36 @@ void fb_print_hex(unsigned int num) {
         a[0] = rst + '0';
         a[1] = 0;
         fb_print(a);
+    }
+}
+
+/** fb_print_dec:
+ *  print the number in dec, it will call `fb_print` so the cursor will not be messed up
+ *  the number can be signed
+ *  The max length of the number is 10!
+ * 
+ *  @param num   The number
+ *  @note The function is very low in efficiency. Very, very low
+ */
+void fb_print_dec(int num) {
+    if(num >= 10000000000) {
+        return;     // the number is too large, the stack is small.
+    }
+    char stack[10];
+    int index = 0;
+    char reminder = 0;
+    char buff[2];
+    while(num != 0) {
+        stack[index] = (char)(num % 10);
+        index ++;
+        num = num / 10;
+    }
+    index -= 1;
+    while(index >= 0) {
+        //fb_print_hex(stack[index]);
+        buff[0] = stack[index] + '0';
+        buff[1] = 0;
+        fb_print(buff);
+        index -= 1;
     }
 }

@@ -3,6 +3,7 @@
 
 #include "type.h"
 
+// The Global Descriptor
 typedef struct s_descriptor {
     u16     limit_low;
     u16     base_low;
