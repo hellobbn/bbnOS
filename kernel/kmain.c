@@ -2,7 +2,6 @@
 #include "dt.h"
 #include "fb.h"
 #include "mem.h"
-#include "protect.h"
 #include "type.h"
 
 /** k_start_msg:

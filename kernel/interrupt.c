@@ -1,8 +1,7 @@
 /* For all GDT / IDT settings */
-#include "protect.h"
 #include "dt.h"
 #include "fb.h"
-#include "isr.h"
+#include "i8259.h"
 
 /** init_idt_desc:
  *  register the handler to the IDT table
