@@ -40,10 +40,11 @@ _start:
 
 csinit:
     ;ud2     ; force a exception
-    jmp     0x40:0  ; another exception
+    ;jmp     0x40:0  ; another exception
     push    0
     popfd
 
+    sti
     jmp     $
 
 ; -------------------------------------------------------------
@@ -129,3 +130,61 @@ exception:
     call    exception_handler
     add     esp, 4 * 2  ; top of stack -> eip
     hlt
+
+; -------------------------------------------------------------
+; Handlers for IRQs
+; -------------------------------------------------------------
+extern  spurious_irq    ; the outer IRQ
+
+global  hwint0
+global  hwint1
+global  hwint2
+global  hwint3
+global  hwint4
+global  hwint5
+global  hwint6
+global  hwint7
+global  hwint8
+global  hwint9
+global  hwint10
+global  hwint11
+global  hwint12
+global  hwint13
+global  hwint14
+global  hwint15
+
+%macro hwint_master 1
+ALIGN 16
+hwint%1:
+    push    %1
+    call    spurious_irq
+    add     esp, 4
+    hlt
+%endmacro
+
+hwint_master    0   ; the clock
+hwint_master    1   ; keyboard
+hwint_master    2   ; cascade!
+hwint_master    3   ; second serial
+hwint_master    4   ; first serial
+hwint_master    5   ; XT winchester
+hwint_master    6   ; floppy
+hwint_master    7   ; printer
+
+%macro hwint_slave  1
+ALIGN 16
+hwint%1:
+    push    %1
+    call    spurious_irq
+    add     esp, 4
+    hlt
+%endmacro
+
+hwint_slave     8   ; realtime clock
+hwint_slave     9   ; irq 2 redirected
+hwint_slave     10  ; irq 10
+hwint_slave     11  ; irq 11
+hwint_slave     12  ; irq 12
+hwint_slave     13  ; irq 13
+hwint_slave     14  ; irq 14
+hwint_slave     15  ; irq 15

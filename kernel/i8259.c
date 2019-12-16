@@ -1,6 +1,7 @@
 /* Initialize 8259A */
 #include "const.h"
 #include "io.h"
+#include "fb.h"
 
 /** init_8259A:
  *  remap the PIC so that the interrupt will not confilct
@@ -22,8 +23,17 @@ PUBLIC void init_8259A(void) {
     outb(0xA1, 0x02); // slave, ICW3
     outb(0x21, 0x01); // master, ICW4
     outb(0xA1, 0x01); // slave, ICW4
-    outb(0x21, 0xFF); // master - All int disabled
+    outb(0x21, 0xFD); // master - All int disabled
     outb(0xA1, 0xFF); // slave - All int disabled
 
     return;
+}
+
+/** spurious_irq:
+ *  The common routine for IRQ
+ */
+PUBLIC void spurious_irq(int irq) {
+    print("Spurious IRQ: ");
+    fb_print_hex(irq);
+    print("\n");
 }

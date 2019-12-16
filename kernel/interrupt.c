@@ -101,12 +101,30 @@ void page_fault();
 void copr_error();
 void exception();
 
+void hwint0();
+void hwint1();
+void hwint2();
+void hwint3();
+void hwint4();
+void hwint5();
+void hwint6();
+void hwint7();
+void hwint8();
+void hwint9();
+void hwint10();
+void hwint11();
+void hwint12();
+void hwint13();
+void hwint14();
+void hwint15();
+
 /** init_prot:
  *  Fill in some handlers
  */
 PUBLIC void init_prot(void) {
     init_8259A();
 
+    // for exception?
     init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, divide_error, PRIVILEGE_KRNL);
     init_idt_desc(INT_VECTOR_DEBUG, DA_386IGate, single_step_error,
                   PRIVILEGE_KRNL);
@@ -134,4 +152,22 @@ PUBLIC void init_prot(void) {
                   PRIVILEGE_KRNL);
     init_idt_desc(INT_VECTOR_COPROC_ERR, DA_386IGate, copr_error,
                   PRIVILEGE_KRNL);
+
+    // for IRQ
+    init_idt_desc(INT_VECTOR_IRQ0 + 0, DA_386IGate, hwint0, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 1, DA_386IGate, hwint1, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 2, DA_386IGate, hwint2, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 3, DA_386IGate, hwint3, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 4, DA_386IGate, hwint4, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 5, DA_386IGate, hwint5, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 6, DA_386IGate, hwint6, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 7, DA_386IGate, hwint7, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 8, DA_386IGate, hwint8, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 9, DA_386IGate, hwint9, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 10, DA_386IGate, hwint10, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 11, DA_386IGate, hwint11, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 12, DA_386IGate, hwint12, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 13, DA_386IGate, hwint13, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 14, DA_386IGate, hwint14, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 15, DA_386IGate, hwint15, PRIVILEGE_KRNL);
 }
