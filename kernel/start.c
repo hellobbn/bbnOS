@@ -1,26 +1,25 @@
 #include "const.h"
+#include "dt.h"
+#include "fb.h"
+#include "mem.h"
 #include "protect.h"
 #include "type.h"
-#include "fb.h"
-
-PUBLIC u8 gdt_ptr[6];
-PUBLIC DESCRIPTOR gdt[GDT_SIZE];
 
 /** k_start_msg:
  *  print the kernel start message.
  */
 PUBLIC void k_start_msg(void) {
-    fb_print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
-             "- Kernel is loaded, now initializing....\n");
+    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+          "- Kernel is loaded, now initializing....\n");
 }
 
 /** cstart:
  *  Copy the gdt from loader to kernel.
- *  The GDT is saved in the global variable `gdt` and the kernel's GDT pointer is
- *  in gdt_ptr.
+ *  The GDT is saved in the global variable `gdt` and the kernel's GDT pointer
+ * is in gdt_ptr.
  */
 PUBLIC void cstart(void) {
-    fb_print("- [cstart] Reloading GDT\n");
+    print("- [cstart] Reloading GDT\n");
 
     // move GDT in loader to the new GDT
     memcpy(&gdt, // the dest gdt
@@ -33,5 +32,15 @@ PUBLIC void cstart(void) {
     *p_gdt_limit =
         GDT_SIZE * sizeof(DESCRIPTOR) - 1; // the limit position in gdt_ptr
     *p_gdt_base = (u32)&gdt;               // the base of gdt_ptr
-    fb_print("- [cstart] GDT now reloaded\n");
+    print("- [cstart] GDT now reloaded\n");
+
+    // set the IDT
+    print("- [cstart] Set up IDT\n");
+    u16 *p_idt_limit = (u16 *)(&idt_ptr[0]); // 2 bytes for limit
+    u32 *p_idt_base = (u32 *)(&idt_ptr[2]);  // 4 bytes for base
+    *p_idt_limit = IDT_SIZE * sizeof(GATE) - 1;
+    *p_idt_base = (u32)(&idt);
+
+    init_prot();
+    print("- [cstart] IDT set up done\n");
 }
