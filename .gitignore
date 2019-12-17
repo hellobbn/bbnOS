@@ -2,3 +2,4 @@ deps/
 mntfloppy/
 output/
 build/
+.vscode/
