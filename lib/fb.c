@@ -120,6 +120,7 @@ void fb_clear() {
 void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg) {
     static int x_pos = 0;
     static int y_pos = 0;
+    static int clear = 0;   // if secondly prints, clear first
     unsigned int pos;
     int cnt = 0;
     char c;
@@ -142,6 +143,13 @@ void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg) {
         } else if (c == '\n') {
             x_pos = 0;
             y_pos++;
+            if(clear == 1) {
+                for(int i = 0; i < 80; ++ i) {
+                    pos = (y_pos * 80 + i) * 2;
+                    fb_write_cell(pos, ' ', fg, bg);
+                    fb_move_cursor(y_pos * 80 + i + 1);
+                }
+            }
         } else if (c >= ' ') {
             pos = (y_pos * 80 + x_pos) * 2;
             fb_write_cell(pos, buf[cnt], fg, bg);
@@ -157,10 +165,12 @@ void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg) {
         if (y_pos >= 25) {
             x_pos = 0;
             y_pos = 0;
+            clear = 1;
         }
 
         cnt++;
     }
+
 }
 
 /** fb_print_hex:

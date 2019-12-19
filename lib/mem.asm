@@ -45,7 +45,7 @@ memcpy:
 		ret
 
 ; -------------------------------------------------------------
-; PUBLIC void memset(void* p_dest, char ch, int sise);
+; PUBLIC void memset(void* p_dest, char ch, int size);
 ; -------------------------------------------------------------
 memset:
 	push	ebp

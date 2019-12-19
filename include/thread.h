@@ -73,4 +73,7 @@ PUBLIC TSS     tss;
 // the thread table
 PUBLIC PROCESS* p_proc_ready;
 
+// from kernel.asm
+void restart(void);
+
 #endif

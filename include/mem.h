@@ -14,4 +14,12 @@
  */
 PUBLIC void *memcpy(void *pDest, void *pSrc, int iSize);
 
+/** memset:
+ *  set a region of memory to a value
+ * 
+ *  @param p_dest   the start address
+ *  @param ch       the value
+ *  @param size     size of the region
+ */
+PUBLIC void memset(void* p_dest, char ch, int size);
 #endif

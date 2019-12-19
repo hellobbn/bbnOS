@@ -4,6 +4,8 @@
 #include "mem.h"
 #include "thread.h"
 #include "type.h"
+#include "i8259.h"
+#include "time.h"
 
 /** k_start_msg:
  *  print the kernel start message.
@@ -71,7 +73,7 @@ void testA() {
     while (1) {
         // nothing here
         print("- [testA] in test A now.\n");
-        delay(100);
+        delay(1);
     }
 }
 
@@ -80,6 +82,9 @@ void testA() {
  */
 int kmain() {
     print("- [kmain] start here\n");
+
+    // set int enter time
+    clock_int_enter_time = -1;
 
     // Initialize LDT
     PROCESS *p_proc = proc_table;
@@ -108,10 +113,10 @@ int kmain() {
     p_proc->registers.eip = (u32)testA; // points to the task
     p_proc->registers.esp = (u32)task_stack + STACK_SIZE_TOTAL;
     p_proc->registers.eflags = 0x1202; // IF = 1, IOPL = 1, bit 2 is always 1
-
+    
     p_proc_ready = proc_table;
     print("- [kmain] trying to switch to task A\n");
-    delay(1);
+    //delay(1);
     restart();
     while (1) {
         // do nothing

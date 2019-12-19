@@ -5,12 +5,15 @@ extern  k_start_msg ; kmain.c
 extern  exception_handler   ; kmain.c
 extern  cstart      ; kmain.c
 extern  kmain    ; kmain.c
+extern  printTestmsg    ; test.c
+extern  delay   ; time.c
 
 ; global value
 extern  gdt_ptr ; kmain.c
 extern  idt_ptr ; kmain.c
 extern  tss     ; thread.h
 extern  p_proc_ready
+extern  clock_int_enter_time
 
 %include "mem.inc"
 
@@ -174,9 +177,55 @@ hwint%1:
 
 ALIGN 16
 hwint0:
+    ; esp now pushes to the PCB, the register top
+    ; now, eip, cs, eflags esp and ss are pushed
+    sub     esp, 4  ; skip retaddr
+    pushad
+    push    ds
+    push    es
+    push    fs
+    push    gs  ; protect some registers
+    mov     dx, ss
+    mov     ds, dx
+    mov     es, dx
+
     inc     byte [gs:0]
+
     mov     al, 0x20
     out     0x20, al  ; EOI to master
+
+    inc     dword [clock_int_enter_time]
+    cmp     dword [clock_int_enter_time], 0
+    jne     .re_enter
+
+    mov     esp, StackTop
+
+    sti
+
+    call    printTestmsg
+
+    ; interrupt re-enter test
+    ; push    1
+    ; call    delay
+    ; add     esp, 4
+
+    cli
+
+    mov     esp, [p_proc_ready] ; return to PCB
+
+    lea     eax, [esp + P_STACK_TOP]    ; reset to the original point
+    mov     dword [tss + TSS3_S_SP0], eax
+
+.re_enter:
+    dec     dword [clock_int_enter_time]
+
+    pop     gs
+    pop     fs
+    pop     es
+    pop     ds
+    popad       ; recover registers
+    add     esp, 4
+
     iretd       ; the clock
 hwint_master    1   ; keyboard
 hwint_master    2   ; cascade!
