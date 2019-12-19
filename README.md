@@ -23,7 +23,7 @@ The OS needs QEMU to run:
 make qemu   # one possible command
 # or you can run manually
 make
-qemu-system-i386 -fda build/qemu
+qemu-system-i386 -fda build/os.img
 ```
 
 ## C. Notes
