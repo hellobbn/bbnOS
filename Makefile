@@ -2,6 +2,9 @@
 # Makefile for bbnOS Following the guide of OrangeS#
 ####################################################
 
+## OS Detection
+UNAME := $(shell uname)
+
 ## DIRs
 BUILD_DIR		= build
 MOUNT_POINT		= ${BUILD_DIR}/mnt
@@ -54,6 +57,12 @@ KERNEL 			= ${BUILD_DIR}/kernel.bin
 ## The output image
 IMG_OUT			= ${BUILD_DIR}/os.img
 
+## Rewrite something for MacOS
+ifeq ($(UNAME), Darwin)
+CC 				= i386-elf-gcc
+LD				= i386-elf-ld
+endif
+
 ## rules
 
 # all
@@ -70,10 +79,18 @@ qemu_gdb: img
 img: prepare ${BOOT} ${LOADER} ${KERNEL}
 	dd if=/dev/zero of=${IMG_OUT} bs=512 count=2880
 	dd if=${BOOT} of=${IMG_OUT} bs=512 count=1 conv=notrunc
+ifeq ($(UNAME), Linux)
 	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
-	sudo cp ${LOADER} ${MOUNT_POINT} -v
-	sudo cp ${KERNEL} ${MOUNT_POINT} -v
+else
+	hdiutil mount ${IMG_OUT} -mountpoint ${MOUNT_POINT}
+endif
+	sudo cp ${LOADER} ${MOUNT_POINT}
+	sudo cp ${KERNEL} ${MOUNT_POINT}
+ifeq ($(UNAME), Linux)
 	sudo umount ${MOUNT_POINT}
+else
+	hdiutil unmount ${MOUNT_POINT}
+endif
 
 ${BOOT}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<
