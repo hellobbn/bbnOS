@@ -23,7 +23,7 @@ PUBLIC void init_8259A(void) {
     outb(0xA1, 0x02); // slave, ICW3
     outb(0x21, 0x01); // master, ICW4
     outb(0xA1, 0x01); // slave, ICW4
-    outb(0x21, 0xFD); // master - All int disabled
+    outb(0x21, 0xFE); // master - clock only
     outb(0xA1, 0xFF); // slave - All int disabled
 
     return;

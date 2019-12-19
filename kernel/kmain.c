@@ -68,9 +68,10 @@ PUBLIC void cstart(void) {
  *  It prints the char 'A' in an infinite loop
  */
 void testA() {
-    print("- [testA] in test A now.\n");
     while (1) {
         // nothing here
+        print("- [testA] in test A now.\n");
+        delay(100);
     }
 }
 
@@ -103,13 +104,14 @@ int kmain() {
     p_proc->registers.es = tmp_ds;
     p_proc->registers.fs = tmp_ds;
     p_proc->registers.ss = tmp_ds;
-    p_proc->registers.gs = tmp_ds;
+    p_proc->registers.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | SA_RPL_TASK;
     p_proc->registers.eip = (u32)testA; // points to the task
     p_proc->registers.esp = (u32)task_stack + STACK_SIZE_TOTAL;
     p_proc->registers.eflags = 0x1202; // IF = 1, IOPL = 1, bit 2 is always 1
 
     p_proc_ready = proc_table;
     print("- [kmain] trying to switch to task A\n");
+    delay(1);
     restart();
     while (1) {
         // do nothing

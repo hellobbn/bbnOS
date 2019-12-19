@@ -174,6 +174,9 @@ hwint%1:
 
 ALIGN 16
 hwint0:
+    inc     byte [gs:0]
+    mov     al, 0x20
+    out     0x20, al  ; EOI to master
     iretd       ; the clock
 hwint_master    1   ; keyboard
 hwint_master    2   ; cascade!
