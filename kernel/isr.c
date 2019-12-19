@@ -170,4 +170,5 @@ PUBLIC void init_prot(void) {
     init_idt_desc(INT_VECTOR_IRQ0 + 13, DA_386IGate, hwint13, PRIVILEGE_KRNL);
     init_idt_desc(INT_VECTOR_IRQ0 + 14, DA_386IGate, hwint14, PRIVILEGE_KRNL);
     init_idt_desc(INT_VECTOR_IRQ0 + 15, DA_386IGate, hwint15, PRIVILEGE_KRNL);
+
 }

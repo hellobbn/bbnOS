@@ -1,13 +1,18 @@
 SelectorKernelCS        equ     8
 
 ; import function
-extern  k_start_msg ; start.c
-extern  exception_handler   ; protect.c
-extern  cstart      ; start.c
+extern  k_start_msg ; kmain.c
+extern  exception_handler   ; kmain.c
+extern  cstart      ; kmain.c
+extern  kmain    ; kmain.c
 
 ; global value
-extern  gdt_ptr ; from start.c
-extern  idt_ptr ; from start.c
+extern  gdt_ptr ; kmain.c
+extern  idt_ptr ; kmain.c
+extern  tss     ; thread.h
+extern  p_proc_ready
+
+%include "mem.inc"
 
 ; =============================================================
 ; BSS SECTION
@@ -44,8 +49,13 @@ csinit:
     push    0
     popfd
 
+    xor     eax, eax
+    mov     ax, SELECTOR_TSS
+    ltr     ax
+
     sti
-    jmp     $
+    jmp     kmain
+    jmp     $   ; never here
 
 ; -------------------------------------------------------------
 ; Interrupt handling function
@@ -162,7 +172,9 @@ hwint%1:
     hlt
 %endmacro
 
-hwint_master    0   ; the clock
+ALIGN 16
+hwint0:
+    iretd       ; the clock
 hwint_master    1   ; keyboard
 hwint_master    2   ; cascade!
 hwint_master    3   ; second serial
@@ -188,3 +200,21 @@ hwint_slave     12  ; irq 12
 hwint_slave     13  ; irq 13
 hwint_slave     14  ; irq 14
 hwint_slave     15  ; irq 15
+
+global restart
+restart:
+    mov     esp, [p_proc_ready]
+    lldt    [esp + P_LDT_SEL]
+    ; move [esp + p_stack_top], which is the end of the stackframe to TSS (ring 0)
+    ; so when next interrupt happens, registers are pushed to stack sequencely
+    lea     eax, [esp + P_STACK_TOP]    ; move esp + P_STACK_TOP to eax
+    mov     dword [tss + TSS3_S_SP0], eax
+
+    pop     gs
+    pop     fs
+    pop     es
+    pop     ds
+    popad
+
+    add     esp, 4  ; ignore retaddr
+    iretd

@@ -30,16 +30,23 @@ typedef void (*int_handler)(); // function type for handler
 #define INDEX_FLAT_C 1
 #define INDEX_FLAR_RW 2
 #define INDEX_VIDEO 3
+#define INDEX_TSS 4 // TSS
+#define INDEX_LDT_FIRST  5
 
 // Selector
 #define SELECTOR_DUMMY 0
 #define SELECTOR_FLAT_C 0x08
 #define SELECTOR_FLAT_RW 0x10
 #define SELECTOR_VIDEO (0x18 + 3) // RPL = 3
+#define SELECTOR_TSS (0x20) // TSS
+#define SELECTOR_LDT_FIRST (0x28)
 
 // other
 #define SELECTOR_KERNEL_CS SELECTOR_FLAT_C
 #define SELECTOR_KERNEL_DS SELECTOR_FLAT_RW
+#define SELECTOR_KERNEL_GS SELECTOR_VIDEO
+
+#define LDT_SIZE    2   // each LDT 2 entries
 
 // descriptor type
 /* 描述符类型值说明 */
@@ -64,6 +71,18 @@ typedef void (*int_handler)(); // function type for handler
 #define DA_386CGate 0x8C /* 386 调用门类型值			*/
 #define DA_386IGate 0x8E /* 386 中断门类型值			*/
 #define DA_386TGate 0x8F /* 386 陷阱门类型值			*/
+/* Selector Attributes */
+#define SA_RPL_MASK 0xFFFC
+#define SA_RPL_0    0
+#define SA_RPL_1    1
+#define SA_RPL_2    2
+#define SA_RPL_3    3
+
+#define SA_RPL_TASK SA_RPL_1
+
+#define SA_TI_MASK  0xFFFB
+#define SA_TIG      0
+#define SA_TIL      4
 
 /* 中断向量 */
 #define INT_VECTOR_DIVIDE 0x0
@@ -87,7 +106,40 @@ typedef void (*int_handler)(); // function type for handler
 #define INT_VECTOR_IRQ0 0x20
 #define INT_VECTOR_IRQ8 0x28
 
-/* IDT Functions and declarations */
+// TSS
+struct s_tss {
+    u32     backlink;
+    u32     esp0;
+    u32     ss0;
+    u32     esp1;
+    u32     ss1;
+    u32     esp2;
+    u32     ss2;
+    u32     cr3;
+    u32     eip;
+    u32     flags;
+    u32     eax;
+    u32     ecx;
+    u32     edx;
+    u32     ebx;
+    u32     esp;
+    u32     ebp;
+    u32     esi;
+    u32     edi;
+    u32     es;
+    u32     cs;
+    u32     ss;
+    u32     ds;
+    u32     fs;
+    u32     gs;
+    u32     ldt;
+    u16     trap;
+    u16     iobase;
+};
+
+typedef struct s_tss    TSS;
+
+// IDT Functions and declarations 
 PUBLIC u8 gdt_ptr[6];
 PUBLIC DESCRIPTOR gdt[GDT_SIZE];
 PUBLIC u8 idt_ptr[6];
@@ -95,4 +147,9 @@ PUBLIC GATE idt[IDT_SIZE];
 
 PUBLIC void init_prot(void); // initialzes IDT
 
+// init a descriptor 
+PUBLIC void init_descriptor(DESCRIPTOR *p_desc, u32 base, u32 limit, u16 attribute);
+PUBLIC u32 seg2phys(int seg);
+
+#define vir2phys(seg_base, vir) (u32) (((u32) seg_base) + (u32)(vir))
 #endif

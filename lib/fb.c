@@ -214,7 +214,8 @@ void fb_print_hex(unsigned int num) {
  */
 void fb_print_dec(int num) {
     if (num >= 10000000) {
-        return; // the number is too large, the stack is small.
+        num = num % 10000000;
+        //return; // the number is too large, the stack is small.
     }
     char stack[10];
     int index = 0;
@@ -223,6 +224,12 @@ void fb_print_dec(int num) {
     if (num < 0) {
         print("-");
         num = -num;
+    }
+    if(num == 0) {
+        buff[0] = '0';
+        buff[1] = 0;
+        print(buff);
+        return;
     }
     while (num != 0) {
         stack[index] = (char)(num % 10);

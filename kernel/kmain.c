@@ -2,6 +2,7 @@
 #include "dt.h"
 #include "fb.h"
 #include "mem.h"
+#include "thread.h"
 #include "type.h"
 
 /** k_start_msg:
@@ -42,4 +43,75 @@ PUBLIC void cstart(void) {
 
     init_prot();
     print("- [cstart] IDT set up done\n");
+
+    // set the tss
+    print("- [cstart] Loading TSS to GDT\n");
+    memset(&tss, 0, sizeof(TSS));
+    tss.ss0 = SELECTOR_KERNEL_DS;
+    init_descriptor(&gdt[INDEX_TSS],
+                    vir2phys(seg2phys(SELECTOR_KERNEL_DS), &tss),
+                    sizeof(TSS) - 1, DA_386TSS);
+    tss.iobase = sizeof(TSS);
+    print("- [cstart] Load TSS Done\n");
+
+    // set the LDT
+    print("- [cstart] Loading LDT to GDT\n");
+    init_descriptor(&gdt[INDEX_LDT_FIRST],
+                    vir2phys(seg2phys(SELECTOR_KERNEL_DS),
+                             proc_table[0].ldts), // base address
+                    LDT_SIZE * sizeof(DESCRIPTOR) - 1, DA_LDT);
+    print("- [cstart] Load LDT done\n");
+}
+
+/** testA:
+ *  A function to test the thread implementation,
+ *  It prints the char 'A' in an infinite loop
+ */
+void testA() {
+    print("- [testA] in test A now.\n");
+    while (1) {
+        // nothing here
+    }
+}
+
+/** kmain:
+ *  The kernel main function
+ */
+int kmain() {
+    print("- [kmain] start here\n");
+
+    // Initialize LDT
+    PROCESS *p_proc = proc_table;
+
+    p_proc->ldt_sel = SELECTOR_LDT_FIRST;
+    memcpy(&p_proc->ldts[0],
+           &gdt[SELECTOR_KERNEL_CS >> 3] // SELECTOR >> 3 is actually the CS in
+                                         // gdt it copies the CS GDT to LDT
+           ,
+           sizeof(DESCRIPTOR)); // the first descriptor entry
+
+    p_proc->ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5; // change the DPL
+    memcpy(&p_proc->ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3],
+           sizeof(DESCRIPTOR));                           // The DS
+    p_proc->ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5; // change the DPL
+
+    p_proc->registers.cs = (0 & SA_RPL_MASK & SA_TI_MASK) | SA_TIL |
+                           SA_RPL_TASK; // 0 -> the first selector of LDT
+    p_proc->registers.ds = (8 & SA_RPL_MASK & SA_TI_MASK) | SA_TIL |
+                           SA_RPL_TASK; // 8 -> the selector for ds
+    u32 tmp_ds = p_proc->registers.ds;
+    p_proc->registers.es = tmp_ds;
+    p_proc->registers.fs = tmp_ds;
+    p_proc->registers.ss = tmp_ds;
+    p_proc->registers.gs = tmp_ds;
+    p_proc->registers.eip = (u32)testA; // points to the task
+    p_proc->registers.esp = (u32)task_stack + STACK_SIZE_TOTAL;
+    p_proc->registers.eflags = 0x1202; // IF = 1, IOPL = 1, bit 2 is always 1
+
+    p_proc_ready = proc_table;
+    print("- [kmain] trying to switch to task A\n");
+    restart();
+    while (1) {
+        // do nothing
+    }
 }
