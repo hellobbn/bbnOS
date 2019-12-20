@@ -2,6 +2,9 @@
 #include "const.h"
 #include "io.h"
 #include "fb.h"
+#include "thread.h"
+
+extern TASK task_table[];
 
 /** init_8259A:
  *  remap the PIC so that the interrupt will not confilct
@@ -36,4 +39,17 @@ PUBLIC void spurious_irq(int irq) {
     print("Spurious IRQ: ");
     fb_print_hex(irq);
     print("\n");
+}
+
+/** clock_handler:
+ *  handles IRQ0 -> the clock
+ * 
+ *  @note in oranges, it is moved to a file `clock.c`
+ */
+PUBLIC void clock_handler(int irq) {
+    print("#");
+    p_proc_ready ++;
+    if(p_proc_ready >= proc_table + MAX_THREAD) {
+        p_proc_ready = proc_table;
+    }
 }

@@ -22,4 +22,14 @@ PUBLIC void *memcpy(void *pDest, void *pSrc, int iSize);
  *  @param size     size of the region
  */
 PUBLIC void memset(void* p_dest, char ch, int size);
+
+/** disable_int
+ *  disable interrupt
+ */
+PUBLIC void disable_int(void);
+
+/** enable_int
+ *  enable interrupt
+ */
+PUBLIC void enable_int(void);
 #endif

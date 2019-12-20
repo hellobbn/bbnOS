@@ -1,11 +1,14 @@
 #include "const.h"
 #include "dt.h"
 #include "fb.h"
+#include "i8259.h"
 #include "mem.h"
 #include "thread.h"
-#include "type.h"
-#include "i8259.h"
 #include "time.h"
+#include "type.h"
+#include "string.h"
+
+extern TASK task_table[];
 
 /** k_start_msg:
  *  print the kernel start message.
@@ -36,16 +39,6 @@ PUBLIC void cstart(void) {
     *p_gdt_base = (u32)&gdt;               // the base of gdt_ptr
     print("- [cstart] GDT now reloaded\n");
 
-    // set the IDT
-    print("- [cstart] Set up IDT\n");
-    u16 *p_idt_limit = (u16 *)(&idt_ptr[0]); // 2 bytes for limit
-    u32 *p_idt_base = (u32 *)(&idt_ptr[2]);  // 4 bytes for base
-    *p_idt_limit = IDT_SIZE * sizeof(GATE) - 1;
-    *p_idt_base = (u32)(&idt);
-
-    init_prot();
-    print("- [cstart] IDT set up done\n");
-
     // set the tss
     print("- [cstart] Loading TSS to GDT\n");
     memset(&tss, 0, sizeof(TSS));
@@ -58,11 +51,27 @@ PUBLIC void cstart(void) {
 
     // set the LDT
     print("- [cstart] Loading LDT to GDT\n");
-    init_descriptor(&gdt[INDEX_LDT_FIRST],
-                    vir2phys(seg2phys(SELECTOR_KERNEL_DS),
-                             proc_table[0].ldts), // base address
-                    LDT_SIZE * sizeof(DESCRIPTOR) - 1, DA_LDT);
+    PROCESS* p_proc = proc_table;
+    u16     selector_ldt = INDEX_LDT_FIRST << 3;
+    for(int i = 0; i < MAX_THREAD; ++ i) {
+        init_descriptor(&gdt[selector_ldt >> 3],
+                        vir2phys(seg2phys(SELECTOR_KERNEL_DS),
+                                proc_table[i].ldts), // base address
+                        LDT_SIZE * sizeof(DESCRIPTOR) - 1, DA_LDT);
+        p_proc ++;
+        selector_ldt += 1 << 3;
+    }
     print("- [cstart] Load LDT done\n");
+
+    // finally, set the IDT
+    print("- [cstart] Set up IDT\n");
+    u16 *p_idt_limit = (u16 *)(&idt_ptr[0]); // 2 bytes for limit
+    u32 *p_idt_base = (u32 *)(&idt_ptr[2]);  // 4 bytes for base
+    *p_idt_limit = IDT_SIZE * sizeof(GATE) - 1;
+    *p_idt_base = (u32)(&idt);
+
+    init_prot();
+    print("- [cstart] IDT set up done\n");
 }
 
 /** testA:
@@ -72,7 +81,18 @@ PUBLIC void cstart(void) {
 void testA() {
     while (1) {
         // nothing here
-        print("- [testA] in test A now.\n");
+        print("- [testA] test A ");
+        delay(1);
+    }
+}
+
+/** testB
+ *  another process
+ */
+void testB() {
+    while (1) {
+        // print 'B'
+        print("- [testB] test B ");
         delay(1);
     }
 }
@@ -82,41 +102,51 @@ void testA() {
  */
 int kmain() {
     print("- [kmain] start here\n");
-
     // set int enter time
     clock_int_enter_time = -1;
-
-    // Initialize LDT
+    disable_int();
+    // Initialize tasks
+    TASK *p_task = task_table;
     PROCESS *p_proc = proc_table;
+    char *p_task_stack = task_stack;
+    u16 selector_ldt = SELECTOR_LDT_FIRST;
 
-    p_proc->ldt_sel = SELECTOR_LDT_FIRST;
-    memcpy(&p_proc->ldts[0],
-           &gdt[SELECTOR_KERNEL_CS >> 3] // SELECTOR >> 3 is actually the CS in
-                                         // gdt it copies the CS GDT to LDT
-           ,
-           sizeof(DESCRIPTOR)); // the first descriptor entry
+    for (int i = 0; i < MAX_THREAD; ++i) {
+        // fill in PCB
+        strcpy(p_proc->p_name, p_task->name);
+        p_proc->pid = i;
 
-    p_proc->ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5; // change the DPL
-    memcpy(&p_proc->ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3],
-           sizeof(DESCRIPTOR));                           // The DS
-    p_proc->ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5; // change the DPL
+        p_proc->ldt_sel = selector_ldt;
 
-    p_proc->registers.cs = (0 & SA_RPL_MASK & SA_TI_MASK) | SA_TIL |
-                           SA_RPL_TASK; // 0 -> the first selector of LDT
-    p_proc->registers.ds = (8 & SA_RPL_MASK & SA_TI_MASK) | SA_TIL |
-                           SA_RPL_TASK; // 8 -> the selector for ds
-    u32 tmp_ds = p_proc->registers.ds;
-    p_proc->registers.es = tmp_ds;
-    p_proc->registers.fs = tmp_ds;
-    p_proc->registers.ss = tmp_ds;
-    p_proc->registers.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | SA_RPL_TASK;
-    p_proc->registers.eip = (u32)testA; // points to the task
-    p_proc->registers.esp = (u32)task_stack + STACK_SIZE_TOTAL;
-    p_proc->registers.eflags = 0x1202; // IF = 1, IOPL = 1, bit 2 is always 1
-    
+        memcpy(&p_proc->ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3],
+               sizeof(DESCRIPTOR));
+        p_proc->ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+        memcpy(&p_proc->ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3],
+               sizeof(DESCRIPTOR));
+        p_proc->ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+        p_proc->registers.cs =
+            ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | SA_RPL_TASK;
+        
+        u32 tmp = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | SA_RPL_TASK;
+        p_proc->registers.ds = tmp;
+        p_proc->registers.es = tmp;
+        p_proc->registers.fs = tmp;
+        p_proc->registers.ss = tmp;
+        p_proc->registers.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | SA_RPL_TASK;
+
+        p_proc->registers.eip = (u32)p_task->initial_eip;
+        p_proc->registers.esp = (u32)p_task_stack;
+        p_proc->registers.eflags = 0x1202;
+
+        p_task_stack -= p_task->stack_size;
+        p_task++;
+        p_proc++;
+        selector_ldt += 1 << 3;
+    }
+    print("- [kmain] trying to switch to tasks\n");
     p_proc_ready = proc_table;
-    print("- [kmain] trying to switch to task A\n");
-    //delay(1);
+    // delay(1);
+    enable_int();
     restart();
     while (1) {
         // do nothing

@@ -14,6 +14,7 @@ extern  idt_ptr ; kmain.c
 extern  tss     ; thread.h
 extern  p_proc_ready
 extern  clock_int_enter_time
+extern  clock_handler
 
 %include "mem.inc"
 
@@ -207,7 +208,9 @@ hwint0:
 
     sti
 
-    call    printTestmsg
+    push    0
+    call    clock_handler
+    add     esp, 4
 
     ; interrupt re-enter test
     ; push    1
@@ -217,7 +220,7 @@ hwint0:
     cli
 
     mov     esp, [p_proc_ready] ; return to PCB
-
+    lldt    [esp + P_LDT_SEL]
     lea     eax, [esp + P_STACK_TOP]    ; reset to the original point
     mov     dword [tss + TSS3_S_SP0], eax
 

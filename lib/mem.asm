@@ -6,6 +6,8 @@
 
 global  memcpy  ; set global
 global  memset	; set global
+global  disable_int
+global  enable_int
 
 ; -------------------------------------------------------------
 ; PUBLIC void *memcpy(void *pDest, void *pSrc, int iSize);
@@ -76,3 +78,15 @@ memset:
 	pop	ebp
 
 	ret			; 函数结束，返回
+
+; -------------------------------------------------------------
+; void disable_int()
+; void enable_int()
+; -------------------------------------------------------------
+disable_int:
+	cli
+	ret
+
+enable_int:
+	sti
+	ret
