@@ -6,6 +6,4 @@
 
 PUBLIC void init_8259A(void); // init PIC
 
-int clock_int_enter_time;   // records the count of the clock isr
-
 #endif

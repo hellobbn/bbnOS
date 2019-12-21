@@ -3,8 +3,7 @@
 #include "io.h"
 #include "fb.h"
 #include "thread.h"
-
-extern TASK task_table[];
+#include "global.h"
 
 /** init_8259A:
  *  remap the PIC so that the interrupt will not confilct
@@ -48,8 +47,5 @@ PUBLIC void spurious_irq(int irq) {
  */
 PUBLIC void clock_handler(int irq) {
     print("#");
-    p_proc_ready ++;
-    if(p_proc_ready >= proc_table + MAX_THREAD) {
-        p_proc_ready = proc_table;
-    }
+
 }

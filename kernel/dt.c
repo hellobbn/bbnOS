@@ -5,6 +5,7 @@
 #include "const.h"
 #include "type.h"
 #include "dt.h"
+#include "global.h"
 
 /** init_descriptor:
  *  initialize the descriptor given by p_desc

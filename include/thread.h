@@ -58,21 +58,9 @@ struct s_proc {
 
 typedef struct s_proc PROCESS; // the PCB
 
-// The process table
-PUBLIC PROCESS proc_table[MAX_THREAD];
-
 #define STACK_SIZE_TESTA 0x8000
 #define STACK_SIZE_TESTB 0x8000
 #define STACK_SIZE_TOTAL (STACK_SIZE_TESTA + STACK_SIZE_TESTB)
-
-// the stack
-PUBLIC char task_stack[STACK_SIZE_TOTAL];
-
-// the TSS
-PUBLIC TSS tss;
-
-// the thread table
-PUBLIC PROCESS *p_proc_ready;
 
 // from kernel.asm
 void restart(void);

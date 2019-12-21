@@ -2,6 +2,7 @@
 #include "dt.h"
 #include "fb.h"
 #include "i8259.h"
+#include "global.h"
 
 /** init_idt_desc:
  *  register the handler to the IDT table

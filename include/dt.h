@@ -139,12 +139,6 @@ struct s_tss {
 
 typedef struct s_tss    TSS;
 
-// IDT Functions and declarations 
-PUBLIC u8 gdt_ptr[6];
-PUBLIC DESCRIPTOR gdt[GDT_SIZE];
-PUBLIC u8 idt_ptr[6];
-PUBLIC GATE idt[IDT_SIZE];
-
 PUBLIC void init_prot(void); // initialzes IDT
 
 // init a descriptor 
