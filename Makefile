@@ -76,7 +76,7 @@ qemu_gdb: img
 	qemu-system-i386 -fda ${IMG_OUT} -s -S
 
 # build the image
-img: prepare ${BOOT} ${LOADER} ${KERNEL}
+img: clean prepare ${BOOT} ${LOADER} ${KERNEL}
 	dd if=/dev/zero of=${IMG_OUT} bs=512 count=2880
 	dd if=${BOOT} of=${IMG_OUT} bs=512 count=1 conv=notrunc
 ifeq ($(UNAME), Linux)

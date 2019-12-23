@@ -88,13 +88,24 @@ void testA() {
     }
 }
 
-/** testB
+/** testB:
  *  another process
  */
 void testB() {
     while (1) {
         // print 'B'
         print("- [testB] test B ");
+        delay(1);
+    }
+}
+
+/** testC:
+ *  another process
+ */
+void testC() {
+    while(1) {
+        // print 'C'
+        print("- [testC] test C ");
         delay(1);
     }
 }

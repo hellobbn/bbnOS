@@ -7,7 +7,7 @@
 #include "dt.h"
 #include "type.h"
 
-#define MAX_THREAD 2 // max 1 thread for now
+#define MAX_THREAD 3 // max 3 thread for now
 
 /** s_stackframe: the stack frame;
  *  The sequence of the register strictly follows the pusha sequence
@@ -60,7 +60,8 @@ typedef struct s_proc PROCESS; // the PCB
 
 #define STACK_SIZE_TESTA 0x8000
 #define STACK_SIZE_TESTB 0x8000
-#define STACK_SIZE_TOTAL (STACK_SIZE_TESTA + STACK_SIZE_TESTB)
+#define STACK_SIZE_TESTC 0x8000
+#define STACK_SIZE_TOTAL (STACK_SIZE_TESTA + STACK_SIZE_TESTB + STACK_SIZE_TESTC)
 
 // from kernel.asm
 void restart(void);
@@ -80,5 +81,6 @@ typedef struct s_task TASK;
 // proto-type
 PUBLIC void testA();
 PUBLIC void testB();
+PUBLIC void testC();
 
 #endif
