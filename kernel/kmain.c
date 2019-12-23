@@ -148,8 +148,7 @@ int kmain() {
     // set int enter time
     clock_int_enter_time = -1;
     // delay(1);
-    enable_int();
-    //restart();
+    restart();
     while (1) {
         // do nothing
     }
