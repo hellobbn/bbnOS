@@ -31,4 +31,7 @@ EXTERN DESCRIPTOR gdt[GDT_SIZE];
 EXTERN u8 idt_ptr[6];
 EXTERN GATE idt[IDT_SIZE]; 
 
+// records the count of the clock isr
+EXTERN int clock_int_enter_time;
+
 #endif

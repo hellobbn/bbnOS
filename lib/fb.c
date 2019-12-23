@@ -1,6 +1,5 @@
 /* Framebuffer */
 /* TODO: Scroll the screen */
-/* TODO: Print Hex and other */
 
 #include "fb.h"
 #include "io.h"

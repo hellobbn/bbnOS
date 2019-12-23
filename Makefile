@@ -28,7 +28,6 @@ LD				= ld
 ASM_B_FLAGS		= -I ${INC_B_DIR}
 ASM_K_FLAGS		= -g -I ${INC_K_DIR} -f elf32
 C_FLAGS			= -c -I ${INC_K_DIR} -m32 -fno-builtin -Wall -Wextra -fno-stack-protector -g
-# TODO: this is dirty!
 LDFLAGS			= -T ${SCRIPT_DIR}/link.ld
 
 ## This Program

@@ -7,10 +7,7 @@
 #include "time.h"
 #include "type.h"
 #include "string.h"
-#include "global.h"
-
-// records the count of the clock isr
-int clock_int_enter_time;  
+#include "global.h"  
 
 /** k_start_msg:
  *  print the kernel start message.
@@ -157,7 +154,7 @@ int kmain() {
     print("- [kmain] trying to switch to tasks\n");
     p_proc_ready = proc_table;
     // set int enter time
-    clock_int_enter_time = -1;
+    clock_int_enter_time = 0;
     // delay(1);
     restart();
     while (1) {

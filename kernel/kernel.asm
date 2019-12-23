@@ -185,26 +185,16 @@ ALIGN 16
 hwint0:
     ; esp now pushes to the PCB, the register top
     ; now, eip, cs, eflags esp and ss are pushed
-    sub     esp, 4  ; skip retaddr
-    pushad
-    push    ds
-    push    es
-    push    fs
-    push    gs  ; protect some registers
-    mov     dx, ss
-    mov     ds, dx
-    mov     es, dx
+    call    save    ; save all registers
+
+    in      al, 0x21    ; master command
+    or      al, 1
+    out     0x21, al    ; no clock interrupt here
 
     inc     byte [gs:0]
 
     mov     al, 0x20
     out     0x20, al  ; EOI to master
-
-    inc     dword [clock_int_enter_time]
-    cmp     dword [clock_int_enter_time], 0
-    jne     .re_enter
-
-    mov     esp, StackTop
 
     sti
 
@@ -212,29 +202,14 @@ hwint0:
     call    clock_handler
     add     esp, 4
 
-    ; interrupt re-enter test
-    ; push    1
-    ; call    delay
-    ; add     esp, 4
-
     cli
 
-    mov     esp, [p_proc_ready] ; return to PCB
-    lldt    [esp + P_LDT_SEL]
-    lea     eax, [esp + P_STACK_TOP]    ; reset to the original point
-    mov     dword [tss + TSS3_S_SP0], eax
+    in      al, 0x21
+    and     al, 0xFE    ; allow clock int again
+    out     0x21, al
 
-.re_enter:
-    dec     dword [clock_int_enter_time]
+    ret ; this will make the kernel jump to wanted position
 
-    pop     gs
-    pop     fs
-    pop     es
-    pop     ds
-    popad       ; recover registers
-    add     esp, 4
-
-    iretd       ; the clock
 hwint_master    1   ; keyboard
 hwint_master    2   ; cascade!
 hwint_master    3   ; second serial
@@ -269,7 +244,8 @@ restart:
     ; so when next interrupt happens, registers are pushed to stack sequencely
     lea     eax, [esp + P_STACK_TOP]    ; move esp + P_STACK_TOP to eax
     mov     dword [tss + TSS3_S_SP0], eax
-
+restart_reenter:
+    dec     dword [clock_int_enter_time]
     pop     gs
     pop     fs
     pop     es
@@ -278,3 +254,34 @@ restart:
 
     add     esp, 4  ; ignore retaddr
     iretd
+
+; -------------------------------------------------------------
+; save register state
+; -------------------------------------------------------------
+save:
+    pushad
+    push    ds
+    push    es
+    push    fs
+    push    gs  ; protect some registers
+    mov     dx, ss
+    mov     ds, dx
+    mov     es, dx
+
+    mov     eax, esp    ; save current esp
+
+    inc     dword [clock_int_enter_time]
+    cmp     dword [clock_int_enter_time], 0
+    ;jne     .re_enter
+    jne     .1  ; re-enter
+
+    mov     esp, StackTop
+
+    push    restart ; jmp to restart
+    jmp     [eax + RETADR - P_STACKBASE]    ; jmp to restart
+
+.1: ; routine for reenter
+    push    restart_reenter ; for re-enter
+    jmp     [eax + RETADR - P_STACKBASE]
+
+; no ret: use jmp to jump back, instead of esp, because esp may be changes

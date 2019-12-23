@@ -48,6 +48,11 @@ PUBLIC void spurious_irq(int irq) {
 PUBLIC void clock_handler(int irq) {
     print("#");
 
+    if(clock_int_enter_time != 0) {
+        print("!");
+        return;
+    }
+
     // switch task
     p_proc_ready ++;
     if(p_proc_ready >= proc_table + MAX_THREAD) {
