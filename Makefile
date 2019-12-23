@@ -41,13 +41,13 @@ LOADER      	= ${BUILD_DIR}/${BOOT_DIR}/loader.bin
 # For kernel
 KERN_ASMS		= ${wildcard ${KERNEL_DIR}/*.asm}
 KERN_C			= ${wildcard ${KERNEL_DIR}/*.c}
-KERN_ASM_OBJS	= ${patsubst %.asm, ${BUILD_DIR}/%.o, ${KERN_ASMS}}
+KERN_ASM_OBJS	= ${patsubst %.asm, ${BUILD_DIR}/%.obj, ${KERN_ASMS}}
 KERN_C_OBJS	    = ${patsubst %.c, ${BUILD_DIR}/%.o, ${KERN_C}}
 
 # For lib
 LIB_ASMS		= ${wildcard ${LIB_DIR}/*.asm}
 LIB_C			= ${wildcard ${LIB_DIR}/*.c}
-KERN_ASM_OBJS  += ${patsubst %.asm, ${BUILD_DIR}/%.o, ${LIB_ASMS}}
+KERN_ASM_OBJS  += ${patsubst %.asm, ${BUILD_DIR}/%.obj, ${LIB_ASMS}}
 KERN_C_OBJS    += ${patsubst %.c, ${BUILD_DIR}/%.o, ${LIB_C}}
 
 # For the out kernel
@@ -105,7 +105,7 @@ ${KERNEL}: ${KERN_C_OBJS} ${KERN_ASM_OBJS}
 ${KERN_C_OBJS}: ${BUILD_DIR}/%.o: %.c
 	${CC} ${C_FLAGS} -o $@ $<
 
-${KERN_ASM_OBJS}: ${BUILD_DIR}/%.o: %.asm
+${KERN_ASM_OBJS}: ${BUILD_DIR}/%.obj: %.asm
 	${ASM} ${ASM_K_FLAGS} -o $@ $<
 
 # make necessary dirs

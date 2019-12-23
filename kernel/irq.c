@@ -4,6 +4,7 @@
 #include "fb.h"
 #include "thread.h"
 #include "global.h"
+#include "i8259.h"
 
 /** init_8259A:
  *  remap the PIC so that the interrupt will not confilct
@@ -25,8 +26,13 @@ PUBLIC void init_8259A(void) {
     outb(0xA1, 0x02); // slave, ICW3
     outb(0x21, 0x01); // master, ICW4
     outb(0xA1, 0x01); // slave, ICW4
-    outb(0x21, 0xFE); // master - clock only
+    outb(0x21, 0xFF); // master - clock only
     outb(0xA1, 0xFF); // slave - All int disabled
+
+    // now init irq table
+    for(int i = 0; i < NUM_IRQ; ++ i) {
+        register_handler(spurious_irq, i);
+    }
 
     return;
 }
@@ -35,6 +41,13 @@ PUBLIC void init_8259A(void) {
  *  The common routine for IRQ
  */
 PUBLIC void spurious_irq(int irq) {
+    irq_table[irq](irq);        // CALL THE REQUESTED IRQ
+}
+
+/** common_irq:
+ *  the common irq routine
+ */
+PUBLIC void common_irq(int irq) {
     print("Spurious IRQ: ");
     fb_print_hex(irq);
     print("\n");
@@ -58,4 +71,16 @@ PUBLIC void clock_handler(int irq) {
     if(p_proc_ready >= proc_table + MAX_THREAD) {
         p_proc_ready = proc_table;
     }
+}
+
+/** register_handler:
+ *  register a function to a given IRQ
+ * 
+ * @param func  the IRQ handler
+ * @param irq   the IRQ to register
+ */
+void register_handler(irq_handler handler, int irq) {
+    // disable_irq here
+    disable_irq(irq);
+    irq_table[irq] = handler;
 }

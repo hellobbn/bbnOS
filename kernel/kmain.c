@@ -113,6 +113,12 @@ void testC() {
 int kmain() {
     print("- [kmain] start here\n");
     disable_int();
+    
+    // enable clock IRQ
+    register_handler(clock_handler, 0);
+    enable_irq(0);  // clock IRQ
+                    // TODO: define irqs
+
     // Initialize tasks
     TASK *p_task = task_table;
     PROCESS *p_proc = proc_table;

@@ -9,6 +9,7 @@
 #include "const.h"
 #include "thread.h"
 #include "type.h"
+#include "i8259.h"
 
 // task-table
 EXTERN TASK task_table[MAX_THREAD];
@@ -33,5 +34,8 @@ EXTERN GATE idt[IDT_SIZE];
 
 // records the count of the clock isr
 EXTERN int clock_int_enter_time;
+
+// IRQ handler
+EXTERN  irq_handler irq_table[NUM_IRQ];
 
 #endif

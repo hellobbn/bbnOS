@@ -15,6 +15,7 @@ extern  tss     ; thread.h
 extern  p_proc_ready
 extern  clock_int_enter_time
 extern  clock_handler
+extern  irq_table
 
 %include "mem.inc"
 
@@ -175,41 +176,29 @@ global  hwint15
 %macro hwint_master 1
 ALIGN 16
 hwint%1:
-    push    %1
-    call    spurious_irq
-    add     esp, 4
-    hlt
-%endmacro
+    call    save
 
-ALIGN 16
-hwint0:
-    ; esp now pushes to the PCB, the register top
-    ; now, eip, cs, eflags esp and ss are pushed
-    call    save    ; save all registers
-
-    in      al, 0x21    ; master command
-    or      al, 1
-    out     0x21, al    ; no clock interrupt here
-
-    inc     byte [gs:0]
+    in      al, 0x21
+    or      al, (1 << %1)
+    out     0x21, al        ; mask the interrupt
 
     mov     al, 0x20
-    out     0x20, al  ; EOI to master
+    out     0x20, al    ; EOI to master
 
-    sti
-
-    push    0
-    call    clock_handler
-    add     esp, 4
-
+    sti     ; disable interrupt
+    push    %1
+    call    spurious_irq    ; this function will determine which handler to call
+    pop     ecx 
     cli
 
     in      al, 0x21
-    and     al, 0xFE    ; allow clock int again
+    and     al, ~(1 << %1)
     out     0x21, al
+    ret
+%endmacro
 
-    ret ; this will make the kernel jump to wanted position
-
+ALIGN 16
+hwint_master    0   ; clock
 hwint_master    1   ; keyboard
 hwint_master    2   ; cascade!
 hwint_master    3   ; second serial

@@ -7,6 +7,7 @@ SECTIONS
 {
     . = 0x30400;
     .text ALIGN(0x1000) : {
+        build/kernel/kernel.obj(.text)  /* This must be linked first */
         *(.text)
     }
 
