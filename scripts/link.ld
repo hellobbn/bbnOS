@@ -6,8 +6,12 @@ OUTPUT_ARCH(i386)
 SECTIONS 
 {
     . = 0x30400;
+
+    .start ALIGN(0x1000) : {
+        build/kernel/kernel.obj(.text)
+    }
+
     .text ALIGN(0x1000) : {
-        build/kernel/kernel.obj(.text)  /* This must be linked first */
         *(.text)
     }
 
@@ -17,5 +21,9 @@ SECTIONS
 
     .bss ALIGN(0x1000) : {
         *(.bss)
+    }
+
+    .rodata ALIGN(0x1000) : {
+        *(.rodata)
     }
 }

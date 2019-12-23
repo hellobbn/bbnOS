@@ -24,7 +24,7 @@ MKDIR          += ${MOUNT_POINT}
 ## Programs, flags, etc
 ASM				= nasm
 CC				= clang
-LD				= ld
+LD				= ld.lld
 ASM_B_FLAGS		= -I ${INC_B_DIR}
 ASM_K_FLAGS		= -g -I ${INC_K_DIR} -f elf32
 C_FLAGS			= -c -I ${INC_K_DIR} -m32 -fno-builtin -Wall -Wextra -fno-stack-protector -g
