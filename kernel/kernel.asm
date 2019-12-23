@@ -57,7 +57,7 @@ csinit:
     mov     ax, SELECTOR_TSS
     ltr     ax
 
-    sti
+    ;sti
     jmp     kmain
     jmp     $   ; never here
 

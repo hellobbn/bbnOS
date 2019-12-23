@@ -125,6 +125,13 @@ void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg) {
     int cnt = 0;
     char c;
 
+    if(x_pos > 100 || y_pos > 100) {
+        x_pos = 0;
+        y_pos = 0;
+        print("error");
+        return;
+    }
+
     if (flag == 1) {
         x_pos = 0;
         y_pos = 0;

@@ -69,7 +69,7 @@ void restart(void);
 typedef void (*task_f)(); // function pointer
 struct s_task {
     task_f initial_eip;
-    int stack_size;
+    unsigned int stack_size;
     char name[16];
 };
 

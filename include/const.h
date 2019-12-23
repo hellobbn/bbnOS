@@ -3,6 +3,7 @@
 
 #define PUBLIC
 #define PRIVATE static
+#define EXTERN  extern
 
 #define GDT_SIZE 128
 #define IDT_SIZE 256

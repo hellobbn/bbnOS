@@ -38,7 +38,7 @@ PUBLIC void cstart(void) {
     u32 *p_gdt_base = (u32 *)(&gdt_ptr[2]);
     *p_gdt_limit =
         GDT_SIZE * sizeof(DESCRIPTOR) - 1; // the limit position in gdt_ptr
-    *p_gdt_base = (u32)&gdt;               // the base of gdt_ptr
+    *p_gdt_base = vir2phys(seg2phys(SELECTOR_KERNEL_DS), &gdt);               // the base of gdt_ptr
     print("- [cstart] GDT now reloaded\n");
 
     // set the tss
@@ -135,10 +135,10 @@ int kmain() {
         p_proc->registers.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | SA_RPL_TASK;
 
         p_proc->registers.eip = (u32)p_task->initial_eip;
-        p_proc->registers.esp = (u32)p_task_stack;
+        p_proc->registers.esp = (u32)p_task_stack + (u32)p_task->stack_size - 1;
         p_proc->registers.eflags = 0x1202;
 
-        p_task_stack -= p_task->stack_size;
+        p_task_stack += p_task->stack_size;
         p_task++;
         p_proc++;
         selector_ldt += 1 << 3;
