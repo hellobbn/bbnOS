@@ -9,7 +9,7 @@
 #include "const.h"
 #include "thread.h"
 #include "type.h"
-#include "i8259.h"
+#include "interrupt.h"
 
 // task-table
 EXTERN TASK task_table[MAX_THREAD];

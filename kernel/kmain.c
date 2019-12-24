@@ -1,7 +1,7 @@
 #include "const.h"
 #include "dt.h"
 #include "fb.h"
-#include "i8259.h"
+#include "interrupt.h"
 #include "mem.h"
 #include "thread.h"
 #include "time.h"

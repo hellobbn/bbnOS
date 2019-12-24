@@ -1,7 +1,7 @@
 /* For all GDT / IDT settings */
 #include "dt.h"
 #include "fb.h"
-#include "i8259.h"
+#include "interrupt.h"
 #include "global.h"
 
 /** init_idt_desc:

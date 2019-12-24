@@ -3,7 +3,7 @@
 #include "const.h"
 #include "thread.h"
 #include "dt.h"
-#include "i8259.h"
+#include "interrupt.h"
 #include "global.h"
 
 // task table

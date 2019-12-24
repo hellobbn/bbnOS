@@ -4,7 +4,7 @@
 #include "fb.h"
 #include "thread.h"
 #include "global.h"
-#include "i8259.h"
+#include "interrupt.h"
 
 /** init_8259A:
  *  remap the PIC so that the interrupt will not confilct
