@@ -22,4 +22,12 @@ void spurious_irq(int irq); // irq handler for finding right handler
 
 PUBLIC void common_irq(int irq);    // common irq handler
 
+// system call
+
+void sys_call(void);    // system call entry, in asm
+
+void sys_call_master(void); // system call entry, in c
+
+#define INT_VECTOR_SYSCALL  0x90
+
 #endif

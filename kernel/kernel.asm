@@ -257,7 +257,7 @@ save:
     mov     ds, dx
     mov     es, dx
 
-    mov     eax, esp    ; save current esp
+    mov     esi, esp    ; save current esp
 
     inc     dword [clock_int_enter_time]
     cmp     dword [clock_int_enter_time], 0
@@ -267,10 +267,29 @@ save:
     mov     esp, StackTop
 
     push    restart ; jmp to restart
-    jmp     [eax + RETADR - P_STACKBASE]    ; jmp to restart
+    jmp     [esi + RETADR - P_STACKBASE]    ; jmp to restart
 
 .1: ; routine for reenter
     push    restart_reenter ; for re-enter
-    jmp     [eax + RETADR - P_STACKBASE]
+    jmp     [esi + RETADR - P_STACKBASE]
 
 ; no ret: use jmp to jump back, instead of esp, because esp may be changes
+
+; -------------------------------------------------------------
+; sys_call handler
+; -------------------------------------------------------------
+global  sys_call
+extern  sys_call_master
+sys_call:
+    call    save
+
+    sti
+
+    push    eax
+    call    sys_call_master
+    add     esp, 4
+    mov     [esi + EAXREG - P_STACKBASE], eax
+
+    cli
+
+    ret

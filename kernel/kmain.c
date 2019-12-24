@@ -7,7 +7,8 @@
 #include "time.h"
 #include "type.h"
 #include "string.h"
-#include "global.h"  
+#include "global.h"
+#include "syscall.h"
 
 /** k_start_msg:
  *  print the kernel start message.
@@ -91,6 +92,7 @@ void testA() {
 void testB() {
     while (1) {
         // print 'B'
+        test_call();
         print("- [testB] test B ");
         delay(1);
     }
