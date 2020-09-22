@@ -65,7 +65,7 @@ endif
 ## rules
 
 # all
-all: img
+all: all_aval_img
 
 # (Optional QEMU)
 qemu: img
@@ -75,7 +75,7 @@ qemu_gdb: img
 	qemu-system-i386 -fda ${IMG_OUT} -s -S
 
 # build the image
-img: clean prepare ${BOOT} ${LOADER} ${KERNEL}
+img: all_aval_img
 	dd if=/dev/zero of=${IMG_OUT} bs=512 count=2880
 	dd if=${BOOT} of=${IMG_OUT} bs=512 count=1 conv=notrunc
 ifeq ($(UNAME), Linux)
@@ -90,6 +90,8 @@ ifeq ($(UNAME), Linux)
 else
 	hdiutil unmount ${MOUNT_POINT}
 endif
+
+all_aval_img: clean prepare ${BOOT} ${LOADER} ${KERNEL}
 
 ${BOOT}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<

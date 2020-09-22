@@ -1,86 +1,110 @@
-/** thread.h
- *  header file for Thread and program
- */
+//===- thread.h - Thread support -----------------------------------------===//
+//
+// Thread support interfaces.
+//
+//===---------------------------------------------------------------------===//
 #ifndef THREAD_H
 #define THREAD_H
 
 #include "dt.h"
 #include "type.h"
 
-#define MAX_THREAD 3 // max 3 thread for now
+/// Max 3 threads for now.
+#define MAX_THREAD 3
 
-/** s_stackframe: the stack frame;
- *  The sequence of the register strictly follows the pusha sequence
- *  and the cpu
- *
- *  Like the following:
- *
- *  `pusha`
- *    - tmporary = esp
- *    - push eax    ( the first to push )
- *    - push ecx edx, ebx, tmporary, ebp, esi, edi
- *
- *  `cpu`
- *    - push ss, esp, cs, eip
- */
+/// The stack frame.
+/// The sequence of the register strictly follows the `pusha` sequence and the
+/// cpu.
+///
+/// Like the following:
+/// `pusha`:
+///   - temporary = esp
+///   - push eax (the first to push)
+///   - push ecx, edx, ebx, temporary, ebx, esi, edi
+///
+/// `cpu`
+///   - push ss, esp, cs, eip
+///
 struct s_stackframe {
-    u32 gs;
-    u32 fs;
-    u32 es;
-    u32 ds;
-    u32 edi;
-    u32 esi;
-    u32 ebp;
-    u32 kernel_esp; // this is ignored by popd
-    u32 ebx;
-    u32 edx;
-    u32 ecx;
-    u32 eax;
-    u32 retaddr; // return address for kernel.asm::save
-    u32 eip;
-    u32 cs;
-    u32 eflags;
-    u32 esp;
-    u32 ss;
+  u32 gs;
+  u32 fs;
+  u32 es;
+  u32 ds;
+  u32 edi;
+  u32 esi;
+  u32 ebp;
+
+  // this is ignored py `popd`
+  u32 kernel_esp;
+
+  u32 ebx;
+  u32 edx;
+  u32 ecx;
+  u32 eax;
+
+  // Return address for kernel.asm::save
+  u32 retaddr;
+
+  u32 eip;
+  u32 cs;
+  u32 eflags;
+  u32 esp;
+  u32 ss;
 };
 
-typedef struct s_stackframe STACK_FRAME; // the stack frame
+/// The stack frame.
+typedef struct s_stackframe STACK_FRAME;
 
-/** s_proc: the thread PCB
- */
+/// The thread PCB.
 struct s_proc {
-    STACK_FRAME registers;
-    u16 ldt_sel;               // The GDT selector telling IDT base and limit
-    DESCRIPTOR ldts[LDT_SIZE]; // local descriptor for code and data
-    u32 pid;                   // process ID
-    char p_name[16];           // if it has a name...
+  STACK_FRAME registers;
+
+  /// The GDT selector telling the LDT base and limit.
+  u16 ldt_sel;
+
+  /// Local descriptor for the code and data.
+  DESCRIPTOR ldts[LDT_SIZE];
+
+  /// Process ID.
+  u32 pid;
+
+  /// If it has a name...
+  char p_name[16];
 };
 
-typedef struct s_proc PROCESS; // the PCB
+/// PCB Type definition.
+typedef struct s_proc PROCESS;
 
+/// Stack test code
+///{
 #define STACK_SIZE_TESTA 0x8000
 #define STACK_SIZE_TESTB 0x8000
 #define STACK_SIZE_TESTC 0x8000
-#define STACK_SIZE_TOTAL (STACK_SIZE_TESTA + STACK_SIZE_TESTB + STACK_SIZE_TESTC)
+#define STACK_SIZE_TOTAL                                                       \
+  (STACK_SIZE_TESTA + STACK_SIZE_TESTB + STACK_SIZE_TESTC)
+///}
 
-// from kernel.asm
+/// from kernel.asm
 void restart(void);
 
-// s_task: the structure for a task
-typedef void (*task_f)(); // function pointer
+/// Task function pointer. Pointing to the function of the task.
+typedef void (*task_f)();
+/// The task structure.
 struct s_task {
-    task_f initial_eip;
-    unsigned int stack_size;
-    char name[16];
+  task_f initial_eip;
+  unsigned int stack_size;
+  char name[16];
 };
 
+/// Task type definition
 typedef struct s_task TASK;
 
-// define the 2 tasks
-
+/// Demo task definitions
+///{
 // proto-type
 PUBLIC void testA();
 PUBLIC void testB();
 PUBLIC void testC();
+///}
 
 #endif

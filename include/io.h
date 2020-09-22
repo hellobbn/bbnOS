@@ -2,23 +2,14 @@
 #ifndef IO_H
 #define IO_H
 
-/** outb:
- *  Function from nasm file: loader.s->outb
- *  Sends the given data to the given I/O port: 8 bits at a time
- *  implemented in lib/io.asm
- *
- *  @param port     The I/O port to send data
- *  @param data     The data to be sent
- */
+///  Function from nasm file: loader.s->outb, Sends the given \p data to the
+/// given I/O port \p port : 8 bits at a time.
+/// Implemented in lib/io.asm
 void outb(unsigned int port, unsigned char data);
 
-/** inb:
- *  Read a byte from the given I/O port
- *  implememted in lib/io.asm
- *
- *  @param port The address of the I/O port
- *  @return     The read byte
- */
+/// Read a byte from the given I/O port \p port.
+/// Implememted in lib/io.asm
+/// \return The read data
 unsigned int inb(unsigned short port);
 
 #endif

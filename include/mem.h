@@ -4,32 +4,18 @@
 
 #include "const.h"
 
-/** memcpy:
- *  copy memory from one region to another.
- *  Implemented in lib/mem.asm
- *
- *  @param pDest  The dest memory pointer
- *  @param pSrc   The source memory pointer
- *  @param iSize  The size (in bytes) to be copied
- */
+/// Copy memory from one region \p pSrc to the destination \p pDest
+/// The bytes copied is specified by \p iSize
+/// Implemented in lib/mem.asm
 PUBLIC void *memcpy(void *pDest, void *pSrc, int iSize);
 
-/** memset:
- *  set a region of memory to a value
- * 
- *  @param p_dest   the start address
- *  @param ch       the value
- *  @param size     size of the region
- */
-PUBLIC void memset(void* p_dest, char ch, int size);
+///  Set a region of memory \p pDest to a value \p ch.
+/// The bytes set is specified by \p size.
+PUBLIC void memset(void *pDest, char ch, int size);
 
-/** disable_int
- *  disable interrupt
- */
+/// Disable all interrupts.
 PUBLIC void disable_int(void);
 
-/** enable_int
- *  enable interrupt
- */
+/// Enable all interruptes.
 PUBLIC void enable_int(void);
 #endif

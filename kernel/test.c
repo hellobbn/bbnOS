@@ -1,9 +1,9 @@
-/** test.c
- *  functions for testing
- */
+//===- test.c - test file -------------------------------------------------===//
+//
+// test files
+//
+//===----------------------------------------------------------------------===//
 
 #include "fb.h"
 
-void printTestmsg() {
-    print("^");
-}
+void printTestmsg() { print("^"); }

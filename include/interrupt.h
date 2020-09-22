@@ -1,33 +1,49 @@
-/* Interrupt Related Headers */
+//===- interrupt.h - interrupt interfaces --------------------------------===//
+//
+// Defines interrupt interfaces
+//
+//===---------------------------------------------------------------------===//
 #ifndef ISR_H
 #define ISR_H
 
 #include "const.h"
 
-PUBLIC void init_8259A(void); // init PIC
+/// Remap the PIC so that interrupts will not conflict.
+/// Then init irq table.
+PUBLIC void init_8259A(void);
 
-typedef void (*irq_handler) (int irq);  // function pointer
+/// The IRQ handler function pointer.
+typedef void (*irq_handler)(int irq);
 
-#define NUM_IRQ 16  // total 16 IRQs
+/// Total 16 IRQs
+#define NUM_IRQ 16
 
+/// Register the IRQ handler \p handler to specific \p irq
 void register_handler(irq_handler handler, int irq);
 
-void disable_irq(int irq);  // disable IRQ for some reason(don't care)
+/// Disable the \p irq for some reason (don't care)
+void disable_irq(int irq);
 
-void enable_irq(int irq);   // enable IRQ
+/// Enable the \p irq
+void enable_irq(int irq);
 
+/// The clock handler that handles IRQ 0.
 void clock_handler(int irq);
 
-void spurious_irq(int irq); // irq handler for finding right handler
+/// IRQ handler for finding the right handler.
+void spurious_irq(int irq);
 
-PUBLIC void common_irq(int irq);    // common irq handler
+/// Common IRQ handler.
+/// This handler is used if no specific handler is specified to the \p irq.
+PUBLIC void common_irq(int irq);
 
-// system call
+/// System call entry, in ASM
+void sys_call(void);
 
-void sys_call(void);    // system call entry, in asm
+/// System call entry, in C
+void sys_call_master(void);
 
-void sys_call_master(void); // system call entry, in c
-
-#define INT_VECTOR_SYSCALL  0x90
+/// 0x90 is the interrupt number for system call
+#define INT_VECTOR_SYSCALL 0x90
 
 #endif

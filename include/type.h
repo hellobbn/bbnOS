@@ -1,5 +1,8 @@
-// FIXME: use std C library
-
+//===- type.h - Definition of kernel types -------------------------------===//
+//
+// Definitions of types kernel used.
+//
+//===---------------------------------------------------------------------===//
 #ifndef TYPE_H
 #define TYPE_H
 

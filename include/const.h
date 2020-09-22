@@ -1,9 +1,18 @@
+//===- const.h - Consts --------------------------------------------------===//
+//
+// This file defines basic constants
+//
+//===---------------------------------------------------------------------===//
+
 #ifndef CONST_H
 #define CONST_H
 
 #define PUBLIC
 #define PRIVATE static
-#define EXTERN  extern
+
+#ifndef EXTERN
+#define EXTERN extern
+#endif
 
 #define GDT_SIZE 128
 #define IDT_SIZE 256
