@@ -43,10 +43,10 @@ PUBLIC void exception_handler(int vec_no, unsigned int error_code, int eip,
                      "#MC Machine Check",
                      "#XF SIMD Floating-Point Exception"};
 
-  fb_print("", 1);
+  printf("", 1);
   for (int i = 0; i < 80 * 10; ++i) {
     // clear first 5 lines
-    print(" ");
+    printf(" ");
   }
 
   fb_print_color("Exception! --> ", 1, FB_CLOR_RED, FB_CLOR_BLACK);

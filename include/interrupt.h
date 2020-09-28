@@ -27,8 +27,16 @@ void disable_irq(int irq);
 /// Enable the \p irq
 void enable_irq(int irq);
 
+/// IRQ Handlers
+///{
+
 /// The clock handler that handles IRQ 0.
 void clock_handler(int irq);
+
+/// The keyboard handler to handle IRQ 1.
+void keyboard_handler(int irq);
+
+///}
 
 /// IRQ handler for finding the right handler.
 void spurious_irq(int irq);

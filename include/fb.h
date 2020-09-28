@@ -22,6 +22,13 @@ int fb_writer(char *buf, unsigned int column, unsigned int row);
 /// --------------------------------------------------------------------
 void fb_write_cell(unsigned int i, char c, unsigned char fg, unsigned char bg);
 
+/// Move the cursor to the new position \p pos
+/// Use `outb` function to move the cursor of the framebuffer to the given
+/// position The cursor position is a 16-bit integer: 0->row 0, column 0;
+/// 80->row 1, column 0.
+/// The position is 16-bit so need to be sent twice(outb is 8-bit)
+void fb_move_cursor(unsigned short pos);
+
 /// Clear the framebuffer.
 /// This actually fills the framebuffer with spaces and black background.
 void fb_clear();
@@ -37,6 +44,9 @@ void fb_clear();
 /// force reset of the cursor if set to 1.
 void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg);
 
+/// This function is like `fb_print_color` but prints one char.
+void fb_putchar(char c, unsigned int fg, unsigned int bg);
+
 /// Prints a hex number. This will call the `fb_print_color()` function so that
 /// the output will not be messed up.
 /// For now we don't expose the color here.
@@ -47,6 +57,9 @@ void fb_print_hex(unsigned int num);
 /// For now we don't expose the color here.
 /// Very inefficient
 void fb_print_dec(int num);
+
+/// Print formatted string to framebuffer.
+int printf(const char *format, ...);
 ///}
 
 /// Simple interface for print

@@ -229,8 +229,9 @@ global restart
 restart:
     mov     esp, [p_proc_ready]
     lldt    [esp + P_LDT_SEL]
-    ; move [esp + p_stack_top], which is the end of the stackframe to TSS (ring 0)
-    ; so when next interrupt happens, registers are pushed to stack sequencely
+    ; move [esp + p_stack_top], which is the end of the stackframe to TSS
+    ; (ring 0) so when next interrupt happens, registers are pushed to stack 
+    ; sequencely
     lea     eax, [esp + P_STACK_TOP]    ; move esp + P_STACK_TOP to eax
     mov     dword [tss + TSS3_S_SP0], eax
 restart_reenter:

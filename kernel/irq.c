@@ -32,13 +32,13 @@ PUBLIC void init_8259A(void) {
   // slave, ICW4
   outb(0xA1, 0x01);
   // master, clock only, disable others
-  outb(0x21, 0xFE);
+  outb(0x21, 0xFF);
   // slave, all int disabled
   outb(0xA1, 0xFF);
 
   // now init irq table
   for (int i = 0; i < NUM_IRQ; ++i) {
-    register_handler(spurious_irq, i);
+    register_handler(common_irq, i);
   }
 
   return;
@@ -50,17 +50,15 @@ PUBLIC void spurious_irq(int irq) {
 }
 
 PUBLIC void common_irq(int irq) {
-  print("Spurious IRQ: ");
-  fb_print_hex(irq);
-  print("\n");
+  printf("Spurious IRQ: %s\n", irq);
 }
 
 PUBLIC void clock_handler(int irq) {
-  print("#");
+  printf("#");
   fb_print_dec(irq);
 
   if (clock_int_enter_time != 0) {
-    print("!");
+    printf("!");
     return;
   }
 
@@ -69,6 +67,12 @@ PUBLIC void clock_handler(int irq) {
   if (p_proc_ready >= proc_table + MAX_THREAD) {
     p_proc_ready = proc_table;
   }
+}
+
+PUBLIC void keyboard_handler(int irq) {
+  unsigned char byte = inb(0x60);
+
+  printf("%02X: key: %02X\n", irq, byte);
 }
 
 void register_handler(irq_handler handler, int irq) {

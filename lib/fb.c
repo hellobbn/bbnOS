@@ -18,12 +18,64 @@ void fb_write_cell(unsigned int i, char c, unsigned char fg, unsigned char bg) {
   fb[i + 1] = ((bg & 0x0F) << 4) | (fg & 0x0F);
 }
 
-/// Move the cursor to the new position \p pos
-/// Use `outb` function to move the cursor of the framebuffer to the given
-/// position The cursor position is a 16-bit integer: 0->row 0, column 0;
-/// 80->row 1, column 0.
-/// The position is 16-bit so need to be sent twice(outb is 8-bit)
-static void fb_move_cursor(unsigned short pos) {
+void fb_putchar(char c, unsigned int fg, unsigned int bg) {
+  static int x_pos = 0;
+  static int y_pos = 0;
+
+  // If secondly prints, clear first.
+  // If this byte is set, the next char printed will clear the line
+  static int clear = 0;
+  unsigned int pos;
+
+  if (x_pos > 80 || y_pos > 25) {
+    // This Shouldn't happen (BUG)
+    fb_writer("BUG in fb_putchar!!", 0, 0);
+    return;
+  }
+
+  if (c == 0x08 && x_pos) {
+    x_pos--;
+  } else if (c == 0x09) {
+    x_pos = (x_pos + 8) & ~(8 - 1);
+  } else if (c == '\r') {
+    x_pos = 0;
+  } else if (c == '\n') {
+    x_pos = 0;
+    y_pos++;
+    if (clear == 1) {
+      for (int i = 0; i < 80; i++) {
+        pos = (y_pos * 80 + i) * 2;
+        fb_write_cell(pos, ' ', fg, bg);
+      }
+    }
+    fb_move_cursor(y_pos * 80 + x_pos);
+  } else if (c >= ' ') {
+    pos = (y_pos * 80 + x_pos) * 2;
+    fb_write_cell(pos, c, fg, bg);
+    fb_move_cursor(y_pos * 80 + x_pos);
+    x_pos++;
+  }
+
+  if (x_pos >= 80) {
+    x_pos = 0;
+    y_pos++;
+  }
+
+  if (y_pos >= 25) {
+    x_pos = 0;
+    y_pos = 0;
+    clear = 1;
+
+    // do a clear now
+    for (int i = 0; i < 80; i++) {
+      pos = (0 * 80 + i) * 2;
+      fb_write_cell(pos, ' ', fg, bg);
+      fb_move_cursor(0);
+    }
+  }
+}
+
+void fb_move_cursor(unsigned short pos) {
   outb(FB_COMMAND_PORT, FB_HIGH_BYTE_COMMAND);
   outb(FB_DATA_PORT, ((pos >> 8) & 0x00FF));
   outb(FB_COMMAND_PORT, FB_LOW_BYTE_COMMAND);

@@ -6,4 +6,4 @@
 
 #include "fb.h"
 
-void printTestmsg() { print("^"); }
+void printTestmsg() { printf("^"); }
