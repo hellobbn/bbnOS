@@ -83,8 +83,9 @@ void fb_move_cursor(unsigned short pos) {
 }
 
 int fb_writer(char *buf, unsigned int column, unsigned int row) {
+    printf("WARNING: fb_writer() is deprecated.\n");
   unsigned int cnt = 0;
-  ;
+
   unsigned int record_x = column;
   unsigned int record_y = row;
   unsigned int pos;
@@ -130,6 +131,7 @@ void fb_clear() {
 }
 
 void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg) {
+  printf("WARNING: fb_print_color() is deprecated.\n");
   static int x_pos = 0;
   static int y_pos = 0;
 
@@ -194,6 +196,7 @@ void fb_print_color(char *buf, int flag, unsigned int fg, unsigned int bg) {
 }
 
 void fb_print_hex(unsigned int num) {
+  printf("WARNING: fb_print_hex() is deprecated.\n");
   fb_print("0x", 0);
   unsigned int tmp = num;
   int flag = 1;
@@ -230,6 +233,7 @@ void fb_print_hex(unsigned int num) {
 }
 
 void fb_print_dec(int num) {
+  printf("WARNING: fb_print_dec() is deprecated.\n");
   if (num >= 10000000) {
     num = num % 10000000;
     // return; // the number is too large, the stack is small.
