@@ -72,9 +72,34 @@ UEFI_BOOT_OBJ = ${patsubst %.c, ${BUILD_DIR}/%.o, ${UEFI_BOOT_SOURCE}}
 UEFI_BOOT_BIN = ${BUILD_DIR}/${BOOT_DIR}/uefi_loader.so
 UEFI_BOOT_IMG = ${BUILD_DIR}/${BOOT_DIR}/uefi_loader.efi
 
-UEFI_C_FLAGS = -Wall -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -D__UEFI__ -I/usr/include/efi/ -I/usr/include/efi/x86_64/ -I/usr/include/efi/protocol -Wall -Wextra -c
-UEFI_LD_FLAGS = -shared -Bsymbolic -nostdlib -znocombreloc -T /usr/lib64/elf_x86_64_efi.lds /usr/lib/crt0-efi-x86_64.o -L/usr/lib64 -lgnuefi -lefi
-UEFI_OBJCOPY_FLAGS = -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel -j .rela -j .reloc --target efi-app-x86_64
+GCC_FILE_NAME = $(shell clang -print-libgcc-file-name)
+
+UEFI_C_FLAGS = -I/usr/include/efi \
+							 -I/usr/include/efi/x86_64 \
+							 -I/usr/include/efi/protocol \
+							 -Wno-error=pragmas \
+							 -mno-red-zone \
+							 -mno-avx \
+							 -fpic \
+							 -Wall -Wextra \
+							 -fshort-wchar -fno-strict-aliasing -ffreestanding \
+							 -fno-stack-protector -fno-stack-check -fno-stack-check \
+							 -fno-merge-all-constants -Wno-error=unused-parameter \
+							 -Wno-error=unused-variable \
+							 -DCONFIG_x86_64 -DGNU_EFI_USE_MS_ABI \
+							 --std=c11 -D__KERNEL__ \
+							 -I/usr/src/sys/build/include \
+							 -c
+UEFI_LD_FLAGS = -nostdlib --warn-common --no-undefined --fatal-warnings \
+								--build-id=sha1 -shared -Bsymbolic \
+								-L/usr/lib \
+								/usr/lib/crt0-efi-x86_64.o
+UEFI_LD_FLAGS_AFTER =  -lefi -lgnuefi $(GCC_FILE_NAME) \
+											 -T /usr/lib/elf_x86_64_efi.lds
+UEFI_OBJCOPY_FLAGS = -j .text -j .sdata -j .data -j .dynamic \
+										 -j .dynsym  -j .rel -j .rela -j .rel.* \
+										 -j .rela.* -j .rel* -j .rela* -j .reloc \
+										 --target efi-app-x86_64
 endif
 
 # For kernel
@@ -115,11 +140,19 @@ endif
 all: all_aval_img
 
 # (Optional QEMU)
+ifeq (${UEFI_KERNEL}, false)
 qemu: img
 	qemu-system-i386 -fda ${IMG_OUT}
 
 qemu_gdb: img
 	qemu-system-i386 -fda ${IMG_OUT} -s -S
+else
+qemu: img
+	sudo qemu-system-x86_64 -drive file=${IMG_OUT} \
+		-drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on \
+		-drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd \
+		-m 256M -cpu qemu64
+endif
 
 # build the image
 img: all_aval_img
@@ -162,11 +195,11 @@ ${LOADER}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<
 else
 ${UEFI_BOOT_IMG}: ${UEFI_BOOT_OBJ}
-	ld ${UEFI_LD_FLAGS} ${UEFI_BOOT_OBJ} -o ${UEFI_BOOT_BIN}
+	ld ${UEFI_LD_FLAGS} ${UEFI_BOOT_OBJ} -o ${UEFI_BOOT_BIN} ${UEFI_LD_FLAGS_AFTER}	
 	${OBJCOPY} ${UEFI_OBJCOPY_FLAGS} ${UEFI_BOOT_BIN} ${UEFI_BOOT_IMG}
 
 ${UEFI_BOOT_OBJ}: ${BUILD_DIR}/%.o: %.c
-	gcc ${UEFI_C_FLAGS} -o $@ $<
+	${CC} ${UEFI_C_FLAGS} -o $@ $<
 endif
 
 
