@@ -66,9 +66,9 @@ PUBLIC void cstart(void) {
   printf("- [cstart] IDT set up done\n");
 }
 
-///  A function to test the thread implementation,
+/// Functions to test the thread implementation,
 /// It prints the char 'A' in an infinite loop
-///
+///{
 PUBLIC void testA() {
   while (1) {
     // nothing here
@@ -93,6 +93,7 @@ PUBLIC void testC() {
     delay(1);
   }
 }
+///}
 
 /// The main kernel function
 int kmain() {

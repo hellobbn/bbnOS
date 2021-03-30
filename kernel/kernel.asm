@@ -34,7 +34,7 @@ StackTop:               ; top of stack
 global _start
 
 ; -------------------------------------------------------------
-; KERNEL start here 
+; KERNEL start here
 ; -------------------------------------------------------------
 _start:
     call    k_start_msg ; print kernel message
@@ -68,23 +68,25 @@ csinit:
 ; =============================================================
 
 ; -------------------------------------------------------------
-; Interrupt handling function
+; Execption handling function
 ; -------------------------------------------------------------
-global divide_error
-global single_step_error
-global nmi
-global breakpoint_exception
-global overflow
-global bounds_check
-global inval_opcode
-global copr_not_available
-global double_fault
-global copr_seg_overrun
-global inval_tss
-global segment_not_present
-global stack_exception
-global general_protection
-global page_fault
+; Exceptions are hanled by halting the system and displaying
+; error messages
+global divide_error             ; Divide Error
+global single_step_error        ; Debug
+global nmi                      ; NMI Interrupt
+global breakpoint_exception     ; Breakpoint
+global overflow                 ; Overflow
+global bounds_check             ; BOUND Range Exceeded
+global inval_opcode             ; Invalid Opcode (Undefined Opcode)
+global copr_not_available       ; Device Not Available (No Math Coprocessor)
+global double_fault             ; Double Fault
+global copr_seg_overrun         ; Coprocessor Segment Overrun (reserved)
+global inval_tss                ; Invalid TSS
+global segment_not_present      ; Segment Not Present
+global stack_exception          ; Stack Segment Falut
+global general_protection       ; General Protection
+global page_fault               ; Page Fault
 global copr_error
 global exception
 
@@ -152,8 +154,10 @@ exception:
     hlt
 
 ; -------------------------------------------------------------
-; Handlers for IRQs
+; Handlers for Hardware Interrupts
 ; -------------------------------------------------------------
+; Those are IRQs for "hardware interrupt", which is generated
+; externally by chipset
 extern  spurious_irq    ; the outer IRQ
 
 global  hwint0
@@ -188,7 +192,7 @@ hwint%1:
     sti     ; disable interrupt
     push    %1
     call    spurious_irq    ; this function will determine which handler to call
-    pop     ecx 
+    pop     ecx
     cli
 
     in      al, 0x21
@@ -230,7 +234,7 @@ restart:
     mov     esp, [p_proc_ready]
     lldt    [esp + P_LDT_SEL]
     ; move [esp + p_stack_top], which is the end of the stackframe to TSS
-    ; (ring 0) so when next interrupt happens, registers are pushed to stack 
+    ; (ring 0) so when next interrupt happens, registers are pushed to stack
     ; sequencely
     lea     eax, [esp + P_STACK_TOP]    ; move esp + P_STACK_TOP to eax
     mov     dword [tss + TSS3_S_SP0], eax
