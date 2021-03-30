@@ -10,6 +10,14 @@
 #include "time.h"
 #include "type.h"
 
+// TODO: Wrap this entry with a compiler check if UEFI support is present
+// #ifdef UEFI_KERNEL
+/// The UEFI Entry of the kernel
+PUBLIC int uefi_kmain(void) {
+  return 123;
+}
+// #endif
+
 /// Printing the kernel startup message. Whoo!
 PUBLIC void k_start_msg(void) {
   printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
