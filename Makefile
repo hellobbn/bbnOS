@@ -12,8 +12,11 @@ UEFI_KERNEL ?= true
 BUILD_DIR		= build
 MOUNT_POINT		= ${BUILD_DIR}/mnt
 
-BOOT_DIR		= boot
-INC_B_DIR		= boot/include
+ifeq (${UEFI_KERNEL}, false)
+BOOT_DIR		= boot/legacy
+else
+BOOT_DIR    = boot/uefi
+endif
 
 ifeq (${UEFI_KERNEL}, false)
 KERNEL_DIR  = kernel/legacy
@@ -35,9 +38,10 @@ MKDIR     += ${MOUNT_POINT}
 ASM				= nasm
 CC				= clang
 LD				= ld.lld
+OBJCOPY   = objcopy
 ASM_B_FLAGS		= -I ${INC_B_DIR}
-ASM_K_FLAGS		= -g -I ${INC_K_DIR}
-C_FLAGS			= -c -I ${INC_K_DIR} -fno-builtin -Wall -Wextra -fno-stack-protector -g
+ASM_K_FLAGS		= -I ${INC_K_DIR}
+C_FLAGS			= -c -I ${INC_K_DIR} -fno-builtin -Wall -Wextra -fno-stack-protector
 
 ifeq ($(UEFI_KERNEL), false)
 LDFLAGS			= -T ${SCRIPT_DIR}/link.ld
@@ -62,6 +66,15 @@ BOOT        = ${BUILD_DIR}/${BOOT_DIR}/boot.bin
 
 LOADER_ASM		= ${BOOT_DIR}/loader.asm
 LOADER      	= ${BUILD_DIR}/${BOOT_DIR}/loader.bin
+else
+UEFI_BOOT_SOURCE = ${wildcard ${BOOT_DIR}/*.c}
+UEFI_BOOT_OBJ = ${patsubst %.c, ${BUILD_DIR}/%.o, ${UEFI_BOOT_SOURCE}}
+UEFI_BOOT_BIN = ${BUILD_DIR}/${BOOT_DIR}/uefi_loader.so
+UEFI_BOOT_IMG = ${BUILD_DIR}/${BOOT_DIR}/uefi_loader.efi
+
+UEFI_C_FLAGS = -Wall -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -D__UEFI__ -I/usr/include/efi/ -I/usr/include/efi/x86_64/ -I/usr/include/efi/protocol -Wall -Wextra -c
+UEFI_LD_FLAGS = -shared -Bsymbolic -nostdlib -znocombreloc -T /usr/lib64/elf_x86_64_efi.lds /usr/lib/crt0-efi-x86_64.o -L/usr/lib64 -lgnuefi -lefi
+UEFI_OBJCOPY_FLAGS = -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel -j .rela -j .reloc --target efi-app-x86_64
 endif
 
 # For kernel
@@ -81,7 +94,11 @@ LIB_C			= ${wildcard ${LIB_DIR}/*.c}
 KERN_C_OBJS    += ${patsubst %.c, ${BUILD_DIR}/%.o, ${LIB_C}}
 
 # For the out kernel
+ifeq ($(UEFI_KERNEL), false)
 KERNEL 			= ${BUILD_DIR}/kernel.bin
+else
+KERNEL      = ${BUILD_DIR}/kernel.elf
+endif
 
 ## The output image
 IMG_OUT			= ${BUILD_DIR}/os.img
@@ -106,7 +123,8 @@ qemu_gdb: img
 
 # build the image
 img: all_aval_img
-	dd if=/dev/zero of=${IMG_OUT} bs=512 count=2880
+	dd if=/dev/zero of=${IMG_OUT} bs=512 count=93750
+ifeq ($(UEFI_KERNEL), false)
 	dd if=${BOOT} of=${IMG_OUT} bs=512 count=1 conv=notrunc
 ifeq ($(UNAME), Linux)
 	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
@@ -120,18 +138,37 @@ ifeq ($(UNAME), Linux)
 else
 	hdiutil unmount ${MOUNT_POINT}
 endif
+else
+	mkfs.vfat ${IMG_OUT}
+	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
+	sudo mkdir -p ${MOUNT_POINT}/EFI/BOOT
+	sudo cp ${UEFI_BOOT_IMG} ${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI
+	# sudo cp startup.nsh ${MOUNT_POINT}
+	sudo cp ${KERNEL} ${MOUNT_POINT}
+	sudo umount ${MOUNT_POINT}
+endif
 
 ifeq ($(UEFI_KERNEL), false)
 all_aval_img: clean prepare ${BOOT} ${LOADER} ${KERNEL}
 else
-all_aval_img: clean prepare ${KERNEL}
+all_aval_img: clean prepare ${UEFI_BOOT_IMG} ${KERNEL}
 endif
 
+ifeq (${UEFI_KERNEL}, false)
 ${BOOT}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<
 
 ${LOADER}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<
+else
+${UEFI_BOOT_IMG}: ${UEFI_BOOT_OBJ}
+	ld ${UEFI_LD_FLAGS} ${UEFI_BOOT_OBJ} -o ${UEFI_BOOT_BIN}
+	${OBJCOPY} ${UEFI_OBJCOPY_FLAGS} ${UEFI_BOOT_BIN} ${UEFI_BOOT_IMG}
+
+${UEFI_BOOT_OBJ}: ${BUILD_DIR}/%.o: %.c
+	gcc ${UEFI_C_FLAGS} -o $@ $<
+endif
+
 
 # FIXME: The linking sequence is important
 #        To be specific, the kernel.o compiled from kernel.asm must be compiled first
