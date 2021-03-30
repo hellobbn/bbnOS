@@ -38,7 +38,7 @@ int memcmp(const void *l, const void *r, size_t n) {
   const unsigned char *lptr = l;
   const unsigned char *rptr = r;
 
-  for (size_t i = 0; i < n; i ++) {
+  for (size_t i = 0; i < n; i++) {
     if (lptr[i] < rptr[i]) {
       return -1;
     } else if (lptr[i] > rptr[i]) {
@@ -79,18 +79,48 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     uefi_call_wrapper(Kernel->Read, 3, Kernel, &size, &header);
   }
 
-  if (
-      memcmp(&header.e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0 ||
+  if (memcmp(&header.e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0 ||
       header.e_ident[EI_CLASS] != ELFCLASS64 ||
-      header.e_ident[EI_DATA] != ELFDATA2LSB ||
-      header.e_type != ET_EXEC ||
-      header.e_machine != EM_X86_64 ||
-      header.e_version != EV_CURRENT
-     ) {
+      header.e_ident[EI_DATA] != ELFDATA2LSB || header.e_type != ET_EXEC ||
+      header.e_machine != EM_X86_64 || header.e_version != EV_CURRENT) {
     Print(L"==> Current Format BAD \n\r");
   } else {
     Print(L"==> Kernel Format Verified \n\r");
   }
+
+  Elf64_Phdr *phdrs;
+  {
+    Kernel->SetPosition(Kernel, header.e_phoff);
+    UINTN size = header.e_phnum * header.e_phentsize;
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, size,
+                                            (void **)&phdrs);
+    Kernel->Read(Kernel, &size, phdrs);
+  }
+
+  for (Elf64_Phdr *phdr = phdrs;
+       (char *)phdr < (char *)phdrs + header.e_phnum * header.e_phentsize;
+       phdr = (Elf64_Phdr *)((char *)phdr + header.e_phentsize)) {
+    switch (phdr->p_type) {
+    case PT_LOAD: {
+      int pages = (phdr->p_memsz + 0x1000 - 1) / 0x1000;
+      Elf64_Addr segment = phdr->p_paddr;
+      SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData,
+                                               pages, &segment);
+
+      Kernel->SetPosition(Kernel, phdr->p_offset);
+      UINTN size = phdr->p_filesz;
+      Kernel->Read(Kernel, &size, (void *)segment);
+      break;
+    }
+    }
+  }
+
+  Print(L"==> Kernel Loaded, jump to kernel... \n\r");
+
+  // create a function pointer, which is the entry point of kernel
+  int (*KernelStart)() = ((__attribute__((sysv_abi)) int (*)()) header.e_entry);
+
+  Print(L"<==Kernel Returned: %d \n\r", KernelStart());
 
   while (1) {
   }
