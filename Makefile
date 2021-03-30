@@ -46,7 +46,7 @@ C_FLAGS			= -c -I ${INC_K_DIR} -fno-builtin -Wall -Wextra -fno-stack-protector
 ifeq ($(UEFI_KERNEL), false)
 LDFLAGS			= -T ${SCRIPT_DIR}/link.ld
 else
-LDFLAGS 		= -T ${SCRIPT_DIR}/uefi.ld -shared -Bsymbolic -nostdlib
+LDFLAGS 		= -T ${SCRIPT_DIR}/uefi.ld -static -Bsymbolic -nostdlib
 endif
 
 # Add macro if it is a UEFI kernel
@@ -67,39 +67,11 @@ BOOT        = ${BUILD_DIR}/${BOOT_DIR}/boot.bin
 LOADER_ASM		= ${BOOT_DIR}/loader.asm
 LOADER      	= ${BUILD_DIR}/${BOOT_DIR}/loader.bin
 else
-UEFI_BOOT_SOURCE = ${wildcard ${BOOT_DIR}/*.c}
-UEFI_BOOT_OBJ = ${patsubst %.c, ${BUILD_DIR}/%.o, ${UEFI_BOOT_SOURCE}}
-UEFI_BOOT_BIN = ${BUILD_DIR}/${BOOT_DIR}/uefi_loader.so
-UEFI_BOOT_IMG = ${BUILD_DIR}/${BOOT_DIR}/uefi_loader.efi
+UEFI_BOOT_IMG = ${BUILD_DIR}/loader.efi
 
-GCC_FILE_NAME = $(shell clang -print-libgcc-file-name)
-
-UEFI_C_FLAGS = -I/usr/include/efi \
-							 -I/usr/include/efi/x86_64 \
-							 -I/usr/include/efi/protocol \
-							 -Wno-error=pragmas \
-							 -mno-red-zone \
-							 -mno-avx \
-							 -fpic \
-							 -Wall -Wextra \
-							 -fshort-wchar -fno-strict-aliasing -ffreestanding \
-							 -fno-stack-protector -fno-stack-check -fno-stack-check \
-							 -fno-merge-all-constants -Wno-error=unused-parameter \
-							 -Wno-error=unused-variable \
-							 -DCONFIG_x86_64 -DGNU_EFI_USE_MS_ABI \
-							 --std=c11 -D__KERNEL__ \
-							 -I/usr/src/sys/build/include \
-							 -c
-UEFI_LD_FLAGS = -nostdlib --warn-common --no-undefined --fatal-warnings \
-								--build-id=sha1 -shared -Bsymbolic \
-								-L/usr/lib \
-								/usr/lib/crt0-efi-x86_64.o
-UEFI_LD_FLAGS_AFTER =  -lefi -lgnuefi $(GCC_FILE_NAME) \
-											 -T /usr/lib/elf_x86_64_efi.lds
-UEFI_OBJCOPY_FLAGS = -j .text -j .sdata -j .data -j .dynamic \
-										 -j .dynsym  -j .rel -j .rela -j .rel.* \
-										 -j .rela.* -j .rel* -j .rela* -j .reloc \
-										 --target efi-app-x86_64
+GNUEFI_DIR    = ./boot/uefi/gnu-efi
+GNUEFI_BUILD_DIR = ${GNUEFI_DIR}/x86_64/bootloader
+UEFI_LOADER = ${GNUEFI_BUILD_DIR}/uefi_main.efi
 endif
 
 # For kernel
@@ -195,11 +167,8 @@ ${LOADER}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<
 else
 ${UEFI_BOOT_IMG}: ${UEFI_BOOT_OBJ}
-	ld ${UEFI_LD_FLAGS} ${UEFI_BOOT_OBJ} -o ${UEFI_BOOT_BIN} ${UEFI_LD_FLAGS_AFTER}	
-	${OBJCOPY} ${UEFI_OBJCOPY_FLAGS} ${UEFI_BOOT_BIN} ${UEFI_BOOT_IMG}
-
-${UEFI_BOOT_OBJ}: ${BUILD_DIR}/%.o: %.c
-	${CC} ${UEFI_C_FLAGS} -o $@ $<
+	make -C ${GNUEFI_DIR} bootloader
+	cp ${UEFI_LOADER} ${UEFI_BOOT_IMG}
 endif
 
 
