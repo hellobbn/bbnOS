@@ -1,6 +1,14 @@
+///===- uefi_main.c -----------------------------------------------------===///
+/// The UEFI Boot Loader for bbnOS
+///===-------------------------------------------------------------------===///
+///
+/// TODO: Fix font styles.
+///
+///===-------------------------------------------------------------------===///
 #include <efi.h>
 #include <efibind.h>
 #include <efidef.h>
+#include <efierr.h>
 #include <efilib.h>
 #include <efiprot.h>
 #include <elf.h>
@@ -14,6 +22,22 @@ typedef struct {
   unsigned int Height;
   unsigned int PixelsPerScanline;
 } Framebuffer;
+
+/// PSF1 Font Related structures and Macros
+///{
+#define PSF1_MAGIC0 0x36
+#define PSF1_MAGIC1 0x04
+typedef struct {
+  unsigned char magic[2];
+  unsigned char mode;
+  unsigned char charsize;
+} PSF1_HEADER;
+
+typedef struct {
+  PSF1_HEADER *psf1_header;
+  void *glyph_buffer;
+} PSF1_FONT;
+///}
 
 Framebuffer framebuffer;
 
@@ -77,6 +101,53 @@ EFI_FILE *LoadFile(EFI_FILE *Directory, CHAR16 *Path, EFI_HANDLE ImageHandle,
   }
 
   return LoadedFile;
+}
+
+/// Load the PSF1 font specified.
+PSF1_FONT *LoadPSF1Font(EFI_FILE *Directory, CHAR16 *Path,
+                        EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
+  EFI_FILE *font = LoadFile(Directory, Path, ImageHandle, SystemTable);
+  if (font == NULL) {
+    Print(L"  > %s: ERROR: Unable to load font file \n\r", __func__);
+    return NULL;
+  }
+
+  // Load the header, and verify it
+  PSF1_HEADER *font_header;
+  SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(PSF1_HEADER),
+                                          (void **)&font_header);
+  UINTN header_size = sizeof(PSF1_HEADER);
+  font->Read(font, &header_size, font_header);
+
+  if (font_header->magic[0] != PSF1_MAGIC0 ||
+      font_header->magic[1] != PSF1_MAGIC1) {
+    Print(L"  > %s: ERROR: Invalid font format \n\r", __func__);
+    return NULL;
+  }
+
+  // Load the glyphs
+  UINTN glyph_buffer_size = font_header->charsize * 256;
+  if (font_header->mode == 1) {
+    // 512 glyph mode
+    glyph_buffer_size = font_header->charsize * 512;
+  }
+
+  void *glyph_buffer;
+  {
+    font->SetPosition(font, sizeof(PSF1_HEADER));
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, glyph_buffer_size,
+                                            (void **)&glyph_buffer);
+    font->Read(font, &glyph_buffer_size, glyph_buffer);
+  }
+
+  // Fill the font structure
+  PSF1_FONT *finished_font;
+  SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(PSF1_FONT),
+                                          (void **)&finished_font);
+  finished_font->psf1_header = font_header;
+  finished_font->glyph_buffer = glyph_buffer;
+
+  return finished_font;
 }
 
 /// Compare two memory regions of size \p n
@@ -190,24 +261,45 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     }
   }
 
-  Print(L"==> Kernel Loaded, jump to kernel... \n\r");
+  Print(L"==> Kernel Loaded, do other initializations before jumping... \n\r");
+
+  PSF1_FONT *newFont =
+      LoadPSF1Font(NULL, L"default_font.psf", ImageHandle, SystemTable);
+  if (newFont == NULL) {
+    Print(L"ERROR: Loading Default font failed. \n\r");
+  } else {
+    Print(L"==> Font loaded. char size: %d\n\r",
+          newFont->psf1_header->charsize);
+  }
 
   // create a function pointer, which is the entry point of kernel
-  int (*KernelStart)(Framebuffer *) =
-      ((__attribute__((sysv_abi)) int (*)(Framebuffer *))header.e_entry);
+  int (*KernelStart)(Framebuffer *, PSF1_FONT *) =
+      ((__attribute__((sysv_abi)) int (*)(Framebuffer *,
+                                          PSF1_FONT *))header.e_entry);
 
+  // Get the framebuffer
   Framebuffer *newBuffer = InitializeGOP();
 
+  // If we get the buffer, print the information about the buffer
   if (newBuffer != NULL) {
     Print(L"  > Base 0x%X\n\r  > Size 0x%X\n\r  > Width %d\n\r  > Height "
           L"%d\n\r  > PixelsPerScanline "
-          L"%d\n\r\n\r",
+          L"%d\n\r",
           newBuffer->BaseAddress, newBuffer->BufferSize, newBuffer->Width,
           newBuffer->Height, newBuffer->PixelsPerScanline);
+  } else {
+    Print(L"PANIC: No framebuffer available \n\r");
+
+    // we should panic, or quit here
+    return EFI_ABORTED;
   }
 
   Print(L"==> Calling kernel \n\r");
-  KernelStart(newBuffer);
+
+  // Start the kernel
+  KernelStart(newBuffer, newFont);
+
+  // The kernel will take over, never here
   while (1) {
   }
 

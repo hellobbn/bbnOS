@@ -28,6 +28,7 @@ INC_K_DIR		= include/uefi
 LIB_DIR     = lib/uefi
 endif
 SCRIPT_DIR		= scripts
+RESOURCE_DIR  = resources
 
 DIRS 			= ${BOOT_DIR} ${KERNEL_DIR} ${LIB_DIR}
 MKDIR			= ${patsubst %, ${BUILD_DIR}/%, ${DIRS}}
@@ -150,6 +151,9 @@ else
 	sudo cp ${UEFI_BOOT_IMG} ${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI
 	# sudo cp startup.nsh ${MOUNT_POINT}
 	sudo cp ${KERNEL} ${MOUNT_POINT}
+
+	# Move the font to img
+	sudo cp ${RESOURCE_DIR}/default_font.psf ${MOUNT_POINT}
 	sudo umount ${MOUNT_POINT}
 endif
 
