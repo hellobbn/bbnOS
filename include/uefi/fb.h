@@ -11,6 +11,10 @@
 /// should always call functions declared here.
 ///
 ///===-------------------------------------------------------------------===///
+//
+// TODO: Function naming is not consistent
+//
+//===--------------------------------------------------------------------===///
 
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
@@ -66,12 +70,20 @@ int setFB(Framebuffer *fb);
 /// \return FB_OP_SUCCESS on success, FB_OP_FAIL on failure
 int setFont(PSF1_FONT *ft);
 
-/// Put a char with specified color to the specific position in the framebuffer
+/// The movable putchar function. Print a character to screen and move to next
+/// position
 ///
-/// \param color The 32-bit true color (maybe)
-/// \param c The char to be put to screen
-/// \param pos_x The x position of the font (column)
-/// \param pos_y The y position of the font (row)
-void fbPutChar(uint32_t color, char c, unsigned int pos_x, unsigned int pos_y);
+/// \param c The character to print
+void fb_putchar(char c);
+
+/// Print a string in formatted style. Use it as normal printf function.
+int printf(const char *format, ...);
+
+/// Writes a character to the framebuffer, we moves the cursor alongside.
+/// This actually calls the functions in fb.c.
+/// FIXME: This actually takes much context switch time, we need to clean them
+///        up eventually
+///
+#define putchar(c) (fb_putchar(c))
 
 #endif // FRAMEBUFFER_H
