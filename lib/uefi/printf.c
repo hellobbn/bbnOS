@@ -35,12 +35,12 @@ static char *__int_str(long i, char b[], int base, char plusSignIfNeeded,
 
   char digit[32] = {0};
   memset(digit, 0, 32);
-  strcpy(digit, "0123456789");
+  strcpy("0123456789", digit);
 
   if (base == 16) {
-    strcat(digit, "ABCDEF");
+    strcat("ABCDEF", digit);
   } else if (base == 17) {
-    strcat(digit, "abcdef");
+    strcat("abcdef", digit);
     base = 16;
   }
 
@@ -88,8 +88,8 @@ static char *__int_str(long i, char b[], int base, char plusSignIfNeeded,
         a[strlen(a)] = ' ';
       }
     }
-    strcat(a, b);
-    strcpy(b, a);
+    strcat(b, a);
+    strcpy(a, b);
   }
 
   return b;
