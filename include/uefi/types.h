@@ -29,4 +29,7 @@ typedef char bool;
 #define true 1
 #define false 0
 
+// NULL
+#define NULL 0
+
 #endif // TYPE_H

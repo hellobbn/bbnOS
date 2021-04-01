@@ -279,19 +279,20 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
   // Get the framebuffer
   Framebuffer *newBuffer = InitializeGOP();
+  {
+    // If we get the buffer, print the information about the buffer
+    if (newBuffer != NULL) {
+      Print(L"  > Base 0x%X\n\r  > Size 0x%X\n\r  > Width %d\n\r  > Height "
+            L"%d\n\r  > PixelsPerScanline "
+            L"%d\n\r",
+            newBuffer->BaseAddress, newBuffer->BufferSize, newBuffer->Width,
+            newBuffer->Height, newBuffer->PixelsPerScanline);
+    } else {
+      Print(L"PANIC: No framebuffer available \n\r");
 
-  // If we get the buffer, print the information about the buffer
-  if (newBuffer != NULL) {
-    Print(L"  > Base 0x%X\n\r  > Size 0x%X\n\r  > Width %d\n\r  > Height "
-          L"%d\n\r  > PixelsPerScanline "
-          L"%d\n\r",
-          newBuffer->BaseAddress, newBuffer->BufferSize, newBuffer->Width,
-          newBuffer->Height, newBuffer->PixelsPerScanline);
-  } else {
-    Print(L"PANIC: No framebuffer available \n\r");
-
-    // we should panic, or quit here
-    return EFI_ABORTED;
+      // we should panic, or quit here
+      return EFI_ABORTED;
+    }
   }
 
   Print(L"==> Calling kernel \n\r");

@@ -19,27 +19,26 @@ void strcpy(const char *src, char *dst) {
 void strcat(const char *src, char *dest) {
   int destPtr = 0;
   int srcPtr = 0;
-  
+
   while (dest[destPtr] != 0) {
-    destPtr ++;
+    destPtr++;
   }
 
   while (src[srcPtr] != 0) {
-    dest[destPtr ++] = src[srcPtr ++];
+    dest[destPtr++] = src[srcPtr++];
   }
+  dest[destPtr] = 0;
 }
-
 
 size_t strlen(const char *str) {
   int size = 0;
 
   while (str[size] != 0) {
-    size ++;
+    size++;
   }
 
   return size;
 }
-
 
 int isdigit(char c) {
   if (c >= '0' && c <= '9') {
@@ -48,5 +47,3 @@ int isdigit(char c) {
 
   return 0;
 }
-
-

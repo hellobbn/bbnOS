@@ -8,8 +8,9 @@
 //===--------------------------------------------------------------------===///
 
 #include "types.h"
+#include "memop.h"
 
-void *memset(void *d, char s, size_t c) {
+void *memset(void *d, int s, size_t c) {
   void *temp = d;
 
   // This code explanation:

@@ -5,8 +5,8 @@
 #include "fb.h"
 #include "types.h"
 
-static Framebuffer *fb;
-static PSF1_FONT *ft;
+static Framebuffer *fb = NULL;
+static PSF1_FONT *ft = NULL;
 
 int initFb(Framebuffer *in_fb, PSF1_FONT *in_ft) {
   fb = in_fb;
@@ -28,6 +28,10 @@ int setFont(PSF1_FONT *in_ft) {
 }
 
 void fbPutChar(unsigned int color, char chr, unsigned int x, unsigned int y) {
+  if (!fb || !ft) {
+    return;
+  }
+
   unsigned int *pixel_ptr = (unsigned int *)fb->BaseAddress;
   char *font_ptr = ft->glyph_buffer + (chr * ft->psf1_header->charsize);
 
@@ -46,6 +50,9 @@ void fbPutChar(unsigned int color, char chr, unsigned int x, unsigned int y) {
 }
 
 void fb_putchar(char c) {
+  if (!fb || !ft) {
+    return;
+  }
   static unsigned int x_pos = 0;
   static unsigned int y_pos = 0;
 
