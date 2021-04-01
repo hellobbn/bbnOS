@@ -39,6 +39,7 @@ MKDIR     += ${MOUNT_POINT}
 ## Programs, flags, etc
 ASM				= nasm
 CC				= clang
+CXX 			= clang++
 LD				= ld.lld
 OBJCOPY   = objcopy
 ASM_B_FLAGS		= -I ${INC_B_DIR}
@@ -59,6 +60,8 @@ else
 C_FLAGS += -m32
 ASM_K_FLAGS += -f elf32
 endif
+
+CXX_FLAGS = C_FLAGS
 
 ## This Program
 ifeq (${UEFI_KERNEL}, false)
@@ -83,6 +86,8 @@ KERN_ASM_OBJS	= ${patsubst %.asm, ${BUILD_DIR}/%.obj, ${KERN_ASMS}}
 endif
 KERN_C			= ${wildcard ${KERNEL_DIR}/*.c}
 KERN_C_OBJS	    = ${patsubst %.c, ${BUILD_DIR}/%.o, ${KERN_C}}
+KERN_CXX    = ${wildcard ${KERNEL_DIR}/*.cpp}
+KERN_CXX_OBJS   = ${patsubst %.cpp, ${BUILD_DIR}/%.obj, ${KERN_CPP}}
 
 # For lib
 ifeq (${UEFI_KERNEL}, false)
@@ -91,6 +96,8 @@ KERN_ASM_OBJS  += ${patsubst %.asm, ${BUILD_DIR}/%.obj, ${LIB_ASMS}}
 endif
 LIB_C			= ${wildcard ${LIB_DIR}/*.c}
 KERN_C_OBJS    += ${patsubst %.c, ${BUILD_DIR}/%.o, ${LIB_C}}
+LIB_CXX   = ${wildcard ${LIB_DIR}/*.cpp}
+KERN_CXX_OBJS  += ${patsubst %.cpp, ${BUILD_DIR}/%.obj, ${LIB_CXX}}
 
 # For the out kernel
 ifeq ($(UEFI_KERNEL), false)
@@ -189,12 +196,15 @@ endif
 ifeq ($(UEFI_KERNEL), false)
 ${KERNEL}: pre_build_kernel ${KERN_C_OBJS} ${KERN_ASM_OBJS}
 else
-${KERNEL}: pre_build_kernel ${KERN_C_OBJS}
+${KERNEL}: pre_build_kernel ${KERN_C_OBJS} ${KERN_CXX_OBJS}
 endif
-		${LD} ${LDFLAGS} -o ${KERNEL} ${KERN_ASM_OBJS} ${KERN_C_OBJS}
+		${LD} ${LDFLAGS} -o ${KERNEL} ${KERN_ASM_OBJS} ${KERN_C_OBJS} ${KERN_CXX_OBJS}
 
 ${KERN_C_OBJS}: ${BUILD_DIR}/%.o: %.c
 	${CC} ${C_FLAGS} -o $@ $<
+
+${KERN_CXX_OBJS}: ${BUILD_DIR}/%.obj: %.cpp
+	${CXX} ${CXX_FLAGS} -o $@ $<
 
 ${KERN_ASM_OBJS}: ${BUILD_DIR}/%.obj: %.asm
 	${ASM} ${ASM_K_FLAGS} -o $@ $<
