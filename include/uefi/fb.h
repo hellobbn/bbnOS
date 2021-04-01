@@ -70,6 +70,12 @@ int setFB(Framebuffer *fb);
 /// \return FB_OP_SUCCESS on success, FB_OP_FAIL on failure
 int setFont(PSF1_FONT *ft);
 
+/// Set the color of the font in the framebuffer. This only affects newly
+/// printed fonts
+///
+/// \param color A 64-bit color info
+void setColor(uint64_t color);
+
 /// The movable putchar function. Print a character to screen and move to next
 /// position
 ///
@@ -86,4 +92,6 @@ int printf(const char *format, ...);
 ///
 #define putchar(c) (fb_putchar(c))
 
+/// Clear the whole screen
+void clearScreen(void); 
 #endif // FRAMEBUFFER_H
