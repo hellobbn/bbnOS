@@ -21,6 +21,7 @@ endif
 ifeq (${UEFI_KERNEL}, false)
 KERNEL_DIR  = kernel/legacy
 INC_K_DIR		= include/legacy
+INC_B_DIR   = boot/legacy/include
 LIB_DIR			= lib/legacy
 else
 KERNEL_DIR  = kernel/uefi
@@ -121,6 +122,8 @@ qemu_gdb: img
 	qemu-system-i386 -fda ${IMG_OUT} -s -S
 else
 qemu: img
+	@echo
+	@echo "==> Starting qemu"
 	sudo qemu-system-x86_64 -drive file=${IMG_OUT} \
 		-drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on \
 		-drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd \
@@ -129,8 +132,10 @@ endif
 
 # build the image
 img: all_aval_img
-	dd if=/dev/zero of=${IMG_OUT} bs=512 count=93750
+	@echo
+	@echo "==> Building bootimage"
 ifeq ($(UEFI_KERNEL), false)
+	dd if=/dev/zero of=${IMG_OUT} bs=512 count=2880
 	dd if=${BOOT} of=${IMG_OUT} bs=512 count=1 conv=notrunc
 ifeq ($(UNAME), Linux)
 	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
@@ -145,6 +150,7 @@ else
 	hdiutil unmount ${MOUNT_POINT}
 endif
 else
+	dd if=/dev/zero of=${IMG_OUT} bs=512 count=93750
 	mkfs.vfat ${IMG_OUT}
 	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
 	sudo mkdir -p ${MOUNT_POINT}/EFI/BOOT
@@ -160,7 +166,7 @@ endif
 ifeq ($(UEFI_KERNEL), false)
 all_aval_img: clean prepare ${BOOT} ${LOADER} ${KERNEL}
 else
-all_aval_img: clean prepare ${UEFI_BOOT_IMG} ${KERNEL}
+all_aval_img: clean prepare gnuefi ${UEFI_BOOT_IMG} ${KERNEL}
 endif
 
 ifeq (${UEFI_KERNEL}, false)
@@ -170,7 +176,9 @@ ${BOOT}: ${BUILD_DIR}/%.bin: %.asm
 ${LOADER}: ${BUILD_DIR}/%.bin: %.asm
 	${ASM} ${ASM_B_FLAGS} -o $@ $<
 else
-${UEFI_BOOT_IMG}: ${UEFI_BOOT_OBJ}
+${UEFI_BOOT_IMG}:
+	@echo
+	@echo "==> Building Boot Loader"
 	make -C ${GNUEFI_DIR} bootloader
 	cp ${UEFI_LOADER} ${UEFI_BOOT_IMG}
 endif
@@ -179,11 +187,11 @@ endif
 # FIXME: The linking sequence is important
 #        To be specific, the kernel.o compiled from kernel.asm must be compiled first
 ifeq ($(UEFI_KERNEL), false)
-${KERNEL}: ${KERN_C_OBJS} ${KERN_ASM_OBJS}
+${KERNEL}: pre_build_kernel ${KERN_C_OBJS} ${KERN_ASM_OBJS}
 else
-${KERNEL}: ${KERN_C_OBJS}
+${KERNEL}: pre_build_kernel ${KERN_C_OBJS}
 endif
-	${LD} ${LDFLAGS} -o ${KERNEL} ${KERN_ASM_OBJS} ${KERN_C_OBJS}
+		${LD} ${LDFLAGS} -o ${KERNEL} ${KERN_ASM_OBJS} ${KERN_C_OBJS}
 
 ${KERN_C_OBJS}: ${BUILD_DIR}/%.o: %.c
 	${CC} ${C_FLAGS} -o $@ $<
@@ -191,10 +199,31 @@ ${KERN_C_OBJS}: ${BUILD_DIR}/%.o: %.c
 ${KERN_ASM_OBJS}: ${BUILD_DIR}/%.obj: %.asm
 	${ASM} ${ASM_K_FLAGS} -o $@ $<
 
+pre_build_kernel:
+	@echo
+	@echo "==> Building Kernel"
+
 # make necessary dirs
 prepare:
 	mkdir -p ${MKDIR}
+ifeq (${UEFI_KERNEL}, false)
+	@echo "==============================="
+	@echo " Building for Legacy Kernel    "
+	@echo "==============================="
+else
+	@echo "==============================="
+	@echo " Building for Legacy Kernel    "
+	@echo "==============================="
+endif
+
+gnuefi:
+	@echo "==> Silencing make gnuefi..."
+	make -C ${GNUEFI_DIR} -j$(nproc) > /dev/null
 
 # clean
 clean:
+	@echo "==> Clean All"
 	rm -rf ${BUILD_DIR}
+ifeq (${UEFI_KERNEL}, true)
+	make -C ${GNUEFI_DIR} clean > /dev/null
+endif
