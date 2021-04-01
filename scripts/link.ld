@@ -8,7 +8,7 @@ SECTIONS
     . = 0x30400;
 
     .start ALIGN(0x1000) : {
-        build/kernel/kernel.obj(.text)
+        build/kernel/legacy/kernel.obj(.text)
     }
 
     .text ALIGN(0x1000) : {
