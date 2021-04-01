@@ -15,6 +15,7 @@
 
 typedef unsigned long long size_t;
 
+/// The framebuffer descriptor
 typedef struct {
   void *BaseAddress;
   size_t BufferSize;
@@ -38,6 +39,14 @@ typedef struct {
   void *glyph_buffer;
 } PSF1_FONT;
 ///}
+
+typedef struct {
+  Framebuffer *framebuffer;
+  PSF1_FONT *PSF1_Font;
+  EFI_MEMORY_DESCRIPTOR *MMap;
+  UINTN MMapSize;
+  UINTN MMapDescSize;
+} BootInfo;
 
 Framebuffer framebuffer;
 
@@ -272,11 +281,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
           newFont->psf1_header->charsize);
   }
 
-  // create a function pointer, which is the entry point of kernel
-  int (*KernelStart)(Framebuffer *, PSF1_FONT *) =
-      ((__attribute__((sysv_abi)) int (*)(Framebuffer *,
-                                          PSF1_FONT *))header.e_entry);
-
   // Get the framebuffer
   Framebuffer *newBuffer = InitializeGOP();
   {
@@ -295,10 +299,37 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     }
   }
 
+  EFI_MEMORY_DESCRIPTOR *MMap = NULL;
+  UINTN MapSize, MapKey;
+  UINTN DescriptorSize;
+  UINT32 DescriptorVersion;
+  {
+    SystemTable->BootServices->GetMemoryMap(
+        &MapSize, MMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, MapSize,
+                                            (void **)&MMap);
+    SystemTable->BootServices->GetMemoryMap(
+        &MapSize, MMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+  }
+
   Print(L"==> Calling kernel \n\r");
 
+  // Fill bootinfo
+  BootInfo bootInfo;
+  bootInfo.framebuffer = newBuffer;
+  bootInfo.PSF1_Font = newFont;
+  bootInfo.MMap = MMap;
+  bootInfo.MMapSize = MapSize;
+  bootInfo.MMapDescSize = DescriptorSize;
+
+  SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+
   // Start the kernel
-  KernelStart(newBuffer, newFont);
+  // create a function pointer, which is the entry point of kernel
+ int (*KernelStart)(BootInfo *) =
+      ((__attribute__((sysv_abi)) int (*)(BootInfo *))header.e_entry);
+
+  KernelStart(&bootInfo);
 
   // The kernel will take over, never here
   while (1) {
