@@ -49,22 +49,5 @@ typedef enum {
     EfiMaxMemoryType
 } EFI_MEMORY_TYPE;
 
-const char *EFI_MEMORY_TYPE_STRINGS[] = {
-    "EfiReservedMemoryType",
-    "EfiLoaderCode",
-    "EfiLoaderData",
-    "EfiBootServicesCode",
-    "EfiBootServicesData",
-    "EfiRuntimeServicesCode",
-    "EfiRuntimeServicesData",
-    "EfiConventionalMemory",
-    "EfiUnusableMemory",
-    "EfiACPIReclaimMemory",
-    "EfiACPIMemoryNVS",
-    "EfiMemoryMappedIO",
-    "EfiMemoryMappedIOPortSpace",
-    "EfiPalCode",
-    "EfiMaxMemoryType"
-};
-
+extern const char *EFI_MEMORY_TYPE_STRINGS[];
 #endif // EFI_MEM_H
