@@ -1,10 +1,10 @@
 ///===- uefi_main.c -----------------------------------------------------===///
 /// The UEFI Boot Loader for bbnOS
 ///===-------------------------------------------------------------------===///
-///
-/// TODO: Fix font styles.
-///
-///===-------------------------------------------------------------------===///
+//
+// TODO: Fix font styles.
+//
+//===-------------------------------------------------------------------===///
 #include <efi.h>
 #include <efibind.h>
 #include <efidef.h>
@@ -303,13 +303,33 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
   UINTN MapSize, MapKey;
   UINTN DescriptorSize;
   UINT32 DescriptorVersion;
+  EFI_STATUS GetMMapRet;
   {
-    SystemTable->BootServices->GetMemoryMap(
-        &MapSize, MMap, &MapKey, &DescriptorSize, &DescriptorVersion);
-    SystemTable->BootServices->AllocatePool(EfiLoaderData, MapSize,
-                                            (void **)&MMap);
-    SystemTable->BootServices->GetMemoryMap(
-        &MapSize, MMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+    MapSize = 0;
+    GetMMapRet = gBS->GetMemoryMap(&MapSize, MMap, &MapKey, &DescriptorSize,
+                                   &DescriptorVersion);
+    ASSERT(GetMMapRet == EFI_BUFFER_TO_SMALL);
+
+    // Loop here, if the pool is too small, we re-allocate it and re-do the
+    // get
+    do {
+      SystemTable->BootServices->AllocatePool(EfiLoaderData, MapSize,
+                                              (void **)&MMap);
+      ASSERT(MMap != NULL);
+
+      GetMMapRet = SystemTable->BootServices->GetMemoryMap(
+          &MapSize, MMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+      if (GetMMapRet != EFI_BUFFER_TOO_SMALL && EFI_ERROR(GetMMapRet)) {
+        Print(L"!!! GetMemoryMap Error! Code: %d !!! \n\r", GetMMapRet);
+        FreePool(MMap);
+        return EFI_ABORTED;
+      }
+
+      if (GetMMapRet == EFI_BUFFER_TOO_SMALL) {
+        Print(L"==> EFI Buffer Too small, retrying... \n\r");
+        FreePool(MMap);
+      }
+    } while (GetMMapRet == EFI_BUFFER_TOO_SMALL);
   }
 
   Print(L"==> Calling kernel \n\r");
@@ -326,7 +346,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
   // Start the kernel
   // create a function pointer, which is the entry point of kernel
- int (*KernelStart)(BootInfo *) =
+  int (*KernelStart)(BootInfo *) =
       ((__attribute__((sysv_abi)) int (*)(BootInfo *))header.e_entry);
 
   KernelStart(&bootInfo);
