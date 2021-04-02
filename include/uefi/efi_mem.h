@@ -32,21 +32,21 @@ typedef struct EFI_MEMORY_DESCRIPTOR {
 } EFI_MEMORY_DESCRIPTOR;
 
 typedef enum {
-    EfiReservedMemoryType,
-    EfiLoaderCode,
-    EfiLoaderData,
-    EfiBootServicesCode,
-    EfiBootServicesData,
-    EfiRuntimeServicesCode,
-    EfiRuntimeServicesData,
-    EfiConventionalMemory,
-    EfiUnusableMemory,
-    EfiACPIReclaimMemory,
-    EfiACPIMemoryNVS,
-    EfiMemoryMappedIO,
-    EfiMemoryMappedIOPortSpace,
-    EfiPalCode,
-    EfiMaxMemoryType
+    EfiReservedMemoryType = 0,
+    EfiLoaderCode = 1,
+    EfiLoaderData = 2,
+    EfiBootServicesCode = 3,
+    EfiBootServicesData = 4,
+    EfiRuntimeServicesCode = 5,
+    EfiRuntimeServicesData = 6,
+    EfiConventionalMemory = 7,
+    EfiUnusableMemory = 8,
+    EfiACPIReclaimMemory = 9,
+    EfiACPIMemoryNVS = 10,
+    EfiMemoryMappedIO = 11,
+    EfiMemoryMappedIOPortSpace = 12,
+    EfiPalCode = 13,
+    EfiMaxMemoryType = 14,
 } EFI_MEMORY_TYPE;
 
 extern const char *EFI_MEMORY_TYPE_STRINGS[];
