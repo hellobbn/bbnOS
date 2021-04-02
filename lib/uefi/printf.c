@@ -15,23 +15,9 @@
 #include "types.h"
 #include "valist.h"
 
-/// Converts an int value to string.
-///
-/// @param i The int value to transform
-/// @param b The place to store the transformed string
-/// @param base The base of the string, hex or dec
-/// @param isPlusSignNeeded Should we add '+' if i > 0
-/// @param isSpaceSignNeeded Should we add space to the front
-/// @param paddingNo Number of paddings of actual number
-/// @param justify If set to 1, the padding is placed at the end,
-///                If set to 0, it is placed at the start.
-/// @param zeroPad If set to 1, the padding is '0' instead of space.
-///
-/// @return The string. We can return it because the string is not created in
-///         this function
-static char *__int_str(long i, char b[], int base, char plusSignIfNeeded,
-                       bool spaceSignIfNeeded, int paddingNo, bool justify,
-                       bool zeroPad) {
+char *__int_str(intmax_t i, char b[], int base, bool plusSignIfNeeded,
+                bool spaceSignIfNeeded, int paddingNo, bool justify,
+                bool zeroPad) {
 
   char digit[32] = {0};
   memset(digit, 0, 32);
@@ -54,7 +40,7 @@ static char *__int_str(long i, char b[], int base, char plusSignIfNeeded,
     *p++ = ' ';
   }
 
-  long shifter = i;
+  intmax_t shifter = i;
   do {
     ++p;
     shifter = shifter / base;
@@ -201,6 +187,7 @@ int vprintf(const char *format, va_list list) {
           length = 'H';
         } else if (format[i] == 'l') {
           length = 'q';
+          ++i;
         }
       }
       specifier = format[i];
@@ -267,7 +254,7 @@ int vprintf(const char *format, va_list list) {
           break;
         }
         case 'j': {
-          unsigned long integer = va_arg(list, unsigned long);
+          uintmax_t integer = va_arg(list, uintmax_t);
           __int_str(integer, intStrBuffer, base, plusSign, spaceNoSign,
                     lengthSpec, leftJustify, zeroPad);
           displayString(intStrBuffer, &chars);
@@ -281,7 +268,7 @@ int vprintf(const char *format, va_list list) {
           break;
         }
         case 't': {
-          long long integer = va_arg(list, long long);
+          ptrdiff_t integer = va_arg(list, ptrdiff_t);
           __int_str(integer, intStrBuffer, base, plusSign, spaceNoSign,
                     lengthSpec, leftJustify, zeroPad);
           displayString(intStrBuffer, &chars);
@@ -332,7 +319,7 @@ int vprintf(const char *format, va_list list) {
           break;
         }
         case 'j': {
-          long integer = va_arg(list, long);
+          intmax_t integer = va_arg(list, intmax_t);
           __int_str(integer, intStrBuffer, base, plusSign, spaceNoSign,
                     lengthSpec, leftJustify, zeroPad);
           displayString(intStrBuffer, &chars);
@@ -346,7 +333,7 @@ int vprintf(const char *format, va_list list) {
           break;
         }
         case 't': {
-          long long integer = va_arg(list, long long);
+          ptrdiff_t integer = va_arg(list, ptrdiff_t);
           __int_str(integer, intStrBuffer, base, plusSign, spaceNoSign,
                     lengthSpec, leftJustify, zeroPad);
           displayString(intStrBuffer, &chars);
@@ -360,7 +347,8 @@ int vprintf(const char *format, va_list list) {
 
       case 'c': {
         if (length == 'l') {
-          displayCharacter(va_arg(list, long), &chars);
+          // BUG: not supported, skip
+          printf("%s: ERROR: wchar not supported!\n", __func__);
         } else {
           displayCharacter(va_arg(list, int), &chars);
         }
@@ -395,13 +383,13 @@ int vprintf(const char *format, va_list list) {
           *(va_arg(list, long long *)) = chars;
           break;
         case 'j':
-          *(va_arg(list, long *)) = chars;
+          *(va_arg(list, intmax_t *)) = chars;
           break;
         case 'z':
           *(va_arg(list, size_t *)) = chars;
           break;
         case 't':
-          *(va_arg(list, long long *)) = chars;
+          *(va_arg(list, ptrdiff_t *)) = chars;
           break;
         default:
           break;
@@ -442,7 +430,7 @@ int vprintf(const char *format, va_list list) {
         for (int i = 0; i < precSpec; ++i) {
           floating *= 10;
         }
-        long decPlaces = (long)(floating + 0.5);
+        intmax_t decPlaces = (intmax_t)(floating + 0.5);
 
         if (precSpec) {
           displayCharacter('.', &chars);

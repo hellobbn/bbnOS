@@ -9,9 +9,10 @@ static Framebuffer *fb = NULL;
 static PSF1_FONT *ft = NULL;
 static uint64_t Color = 0xffffffff;
 
-int initFb(Framebuffer *in_fb, PSF1_FONT *in_ft) {
+int initFb(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color) {
   fb = in_fb;
   ft = in_ft;
+  Color = color;
 
   return FB_OP_SUCCESS;
 }
@@ -57,6 +58,7 @@ void _fbPutChar(uint64_t color, char chr, unsigned int x, unsigned int y) {
 
 #define fbPutChar(c, x, y) (_fbPutChar(Color, c, x, y))
 
+// BUG: This implementation seems to have bugs.
 void fb_putchar(char c) {
   if (!fb || !ft) {
     return;
@@ -69,7 +71,7 @@ void fb_putchar(char c) {
   static int clear = 0;
 
   if (x_pos > fb->Width || y_pos > fb->Height - 16) {
-    
+    return;
   }
 
   if (c == 0x08 && x_pos) {

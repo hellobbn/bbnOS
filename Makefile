@@ -61,7 +61,7 @@ C_FLAGS += -m32
 ASM_K_FLAGS += -f elf32
 endif
 
-CXX_FLAGS = C_FLAGS
+CXX_FLAGS = ${C_FLAGS}
 
 ## This Program
 ifeq (${UEFI_KERNEL}, false)
@@ -132,8 +132,8 @@ qemu: img
 	@echo
 	@echo "==> Starting qemu"
 	sudo qemu-system-x86_64 -drive file=${IMG_OUT} \
-		-drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on \
-		-drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd \
+		-drive if=pflash,format=raw,unit=0,file=./resources/OVMF_CODE.fd \
+		-drive if=pflash,format=raw,unit=1,file=./resources/OVMF_VARS.fd \
 		-m 256M -cpu qemu64
 endif
 

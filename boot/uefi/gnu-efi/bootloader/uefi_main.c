@@ -326,7 +326,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
       }
 
       if (GetMMapRet == EFI_BUFFER_TOO_SMALL) {
-        Print(L"==> EFI Buffer Too small, retrying... \n\r");
+        Print(L"!! ==> EFI Buffer Too small, retrying... \n\r");
         FreePool(MMap);
       }
     } while (GetMMapRet == EFI_BUFFER_TOO_SMALL);

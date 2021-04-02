@@ -53,7 +53,7 @@ typedef struct {
 /// \param fb The structure describing the framebuffer
 /// \param ft The font to be used in the printing function
 /// \return Whether the initialization is successful, FB_OP_SUCCESS if success
-int initFb(Framebuffer *fb, PSF1_FONT *ft);
+int initFb(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color);
 
 /// This **UNSAFE** function sets the framebuffer to the parameter, used for
 /// purposes only.
