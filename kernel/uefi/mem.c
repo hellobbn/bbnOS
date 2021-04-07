@@ -31,7 +31,8 @@ static void *PGinitBitMap(size_t size, void *addr) {
 static void _ReservePage(void *addr) {
   uint64_t index = (uint64_t)addr / 4096;
   if (bitmapGetVal(&MemBitMap, index) == true) {
-    printf("!! %s: Trying to reserve a used page, addr = %X, index = %d\n", __func__, addr, index);
+    printf("!! %s: Trying to reserve a used page, addr = %X, index = %d\n",
+           __func__, addr, index);
     return;
   }
 
@@ -112,6 +113,20 @@ uint64_t getUsedMemSize() { return used_memory; }
 
 uint64_t getReservedMemSize() { return reserved_memory; }
 
+void *requestPage() {
+  for (uint64_t index = 0; index < MemBitMap.size * 8; index++) {
+    if (bitmapGetVal(&MemBitMap, index) == true) {
+      continue;
+    }
+
+    _LockPage((void *)(index * 4096));
+    return (void *)(index * 4096);
+  }
+
+  // TODO: Page frame swap
+  return NULL;
+}
+
 void readEFIMemoryMap(EFI_MEMORY_DESCRIPTOR *mmap, size_t mmap_size,
                       size_t mmap_desc_size) {
   static bool initialized = false;
@@ -131,6 +146,8 @@ void readEFIMemoryMap(EFI_MEMORY_DESCRIPTOR *mmap, size_t mmap_size,
     EFI_MEMORY_DESCRIPTOR *desc =
         (EFI_MEMORY_DESCRIPTOR *)((uint64_t)mmap + (i * mmap_desc_size));
     if (desc->type == EfiConventionalMemory) {
+      printf("Conventional Mem: From %lX to %lX\n", desc->phys_addr,
+             desc->phys_addr + desc->num_pages * 4096);
       if (desc->num_pages * 4096 > largest_mem_seg_size) {
         largest_mem_seg = desc->phys_addr;
         largest_mem_seg_size = desc->num_pages * 4096;
@@ -156,7 +173,8 @@ void readEFIMemoryMap(EFI_MEMORY_DESCRIPTOR *mmap, size_t mmap_size,
     // FIXME: The memory mapped I/Os resides in addresses below 4GB, we might
     // want to rule them out first
     if (desc->type != EfiConventionalMemory &&
-        desc->type != EfiMemoryMappedIO && desc->type != EfiMemoryMappedIOPortSpace) {
+        desc->type != EfiMemoryMappedIO &&
+        desc->type != EfiMemoryMappedIOPortSpace) {
       ReservePages(desc->phys_addr, desc->num_pages);
     }
   }

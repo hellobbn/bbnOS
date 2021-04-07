@@ -131,7 +131,7 @@ else
 qemu: img
 	@echo
 	@echo "==> Starting qemu"
-	sudo qemu-system-x86_64 -drive file=${IMG_OUT} \
+	qemu-system-x86_64 -drive file=${IMG_OUT} \
 		-drive if=pflash,format=raw,unit=0,file=./resources/OVMF_CODE.fd \
 		-drive if=pflash,format=raw,unit=1,file=./resources/OVMF_VARS.fd \
 		-m 256M -cpu qemu64

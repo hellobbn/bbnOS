@@ -4,6 +4,7 @@ OUTPUT_FORMAT("elf64-x86-64")
 
 SECTIONS 
 {
+    _KernelStart = .;
     .text : ALIGN(0x1000)
     {
         *(.text)
@@ -21,4 +22,5 @@ SECTIONS
         *(COMMON)
         *(.bss)
     }
+    _KernelEnd = .;
 }

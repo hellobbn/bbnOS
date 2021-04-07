@@ -11,7 +11,7 @@
 
 /// The BitMap type
 typedef struct BitMap {
-  /// The size of the bitmap, a byte = 8 bits
+  /// The size of the bitmap, in bytes, a byte = 8 bits
   size_t size;
 
   /// The bitmap buffer

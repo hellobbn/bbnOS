@@ -23,6 +23,8 @@ uint64_t getUsedMemSize();
 
 uint64_t getReservedMemSize();
 
+void *requestPage();
+
 void readEFIMemoryMap(EFI_MEMORY_DESCRIPTOR *mmap, size_t mmap_size,
                       size_t mmap_desc_size);
 

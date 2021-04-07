@@ -265,6 +265,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
       // Load this segment to memory
       Kernel->Read(Kernel, &size, (void *)segment);
+      Print(L"PT_LOAD: %X, size %X \n\r", phdr->p_paddr, phdr->p_filesz);
       break;
     }
     }
