@@ -12,6 +12,17 @@
 
 #include "efi_mem.h"
 #include "types.h"
+#include "bitmap.h"
+
+/// A structure describing the whole memory structure for the kernel
+typedef struct MemDesc {
+  BitMap MemBitMap;
+  uint64_t free_memory;
+  uint64_t reserved_memory;
+  uint64_t used_memory;
+
+  uint64_t mem_size_bytes;
+} MemDesc;
 
 void freePages(void *addr, size_t num_pages);
 

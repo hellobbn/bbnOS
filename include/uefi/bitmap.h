@@ -7,6 +7,9 @@
 ///
 ///===-------------------------------------------------------------------===///
 
+#ifndef BITMAP_H
+#define BITMAP_H
+
 #include "types.h"
 
 /// The BitMap type
@@ -23,3 +26,5 @@ bool bitmapGetVal(BitMap *bm, uint64_t index);
 
 /// Set the value of the bitmap at a given index
 void bitmapSetVal(BitMap *bm, uint64_t index, bool value);
+
+#endif // BITMAP_H
