@@ -3,6 +3,7 @@
 #include "efi_mem.h"
 #include "fb.h"
 #include "types.h"
+#include "memop.h"
 
 static MemDesc mem_info = {.free_memory = 0,
                            .reserved_memory = 0,
@@ -110,8 +111,6 @@ void lockPages(void *addr, size_t num_pages) {
   }
 }
 
-static void _descGetLargestPage(EFI_MEMORY_DESCRIPTOR *desc) {}
-
 static void _descReservePage(EFI_MEMORY_DESCRIPTOR *desc) {
   if (desc->type != EfiConventionalMemory && desc->type != EfiMemoryMappedIO &&
       desc->type != EfiMemoryMappedIOPortSpace) {
@@ -211,4 +210,50 @@ uint64_t getMemSize(EFI_MEMORY_DESCRIPTOR *mmap, uint64_t num_mmap_entries,
   _doForAllMMapDesc(mmap, num_mmap_entries, mmap_desc_size, _descAddMemSize);
 
   return mem_info.mem_size_bytes;
+}
+
+void initPageMapIndexer(PageMapIndexer *PMI, uint64_t virtualAddress) {
+  virtualAddress >>= 12;
+  PMI->P_i = virtualAddress & 0x1ff;
+  virtualAddress >>= 9;
+  PMI->PT_i = virtualAddress & 0x1ff;
+  virtualAddress >>= 9;
+  PMI->PD_i = virtualAddress & 0x1ff;
+  virtualAddress >>= 9;
+  PMI->PDP_i = virtualAddress & 0x1ff;
+}
+
+void initPageTableManager(PageTableManager *pml, PageTable *pml4_addr) {
+  pml->PML4 = pml4_addr;
+}
+
+static PageTable *getNextPageTable(PageDirEntry *pde) {
+  if (pde->Present) {
+    return (PageTable *)((uint64_t)pde->Address << 12);
+  } else {
+    PageTable *ret_pt = (PageTable *)requestPage();
+    memset(ret_pt, 0, 0x1000);
+    pde->Address = (uint64_t)ret_pt >> 12;
+    pde->Present = 1;
+    pde->ReadWrite = 1;
+    return ret_pt;
+  }
+}
+
+void pageTableManagerMapMemory(PageTableManager *ptm, void *virt_mem, void *phys_mem) {
+  PageMapIndexer indexer;
+  initPageMapIndexer(&indexer, (uint64_t)virt_mem);
+
+  PageDirEntry pde;
+  pde = ptm->PML4->entries[indexer.PDP_i];
+  PageTable *pdp = getNextPageTable(&(ptm->PML4->entries[indexer.PDP_i]));
+  PageTable *pd = getNextPageTable(&(pdp->entries[indexer.PD_i]));
+  PageTable *pt = getNextPageTable(&(pd->entries[indexer.PT_i]));
+
+  pde = pt->entries[indexer.P_i];
+  pde.Address = (uint64_t)phys_mem >> 12;
+  pde.Present = 1;
+  pde.ReadWrite = 1;
+
+  pt->entries[indexer.P_i] = pde;
 }
