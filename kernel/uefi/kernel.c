@@ -62,5 +62,4 @@ void kmain(BootInfo *boot_info) {
 
   while (1) {
   }
-  return;
 }

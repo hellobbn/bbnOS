@@ -187,9 +187,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
   // Clear Screen on start
   gST->ConOut->ClearScreen(gST->ConOut);
 
-  // Disable watchdog
-  SystemTable->BootServices->SetWatchdogTimer(0, 0, 0, NULL);
-
   Print(L"== BBN OS UEFI Loader == \n\r");
 
   // Load the kernel from EFI partition
@@ -347,8 +344,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
   // Start the kernel
   // create a function pointer, which is the entry point of kernel
-  int (*KernelStart)(BootInfo *) =
-      ((__attribute__((sysv_abi)) int (*)(BootInfo *))header.e_entry);
+  void (*KernelStart)(BootInfo *) =
+      ((__attribute__((sysv_abi)) void (*)(BootInfo *))header.e_entry);
 
   KernelStart(&bootInfo);
 
