@@ -25,6 +25,6 @@ typedef struct BitMap {
 bool bitmapGetVal(BitMap *bm, uint64_t index);
 
 /// Set the value of the bitmap at a given index
-void bitmapSetVal(BitMap *bm, uint64_t index, bool value);
+bool bitmapSetVal(BitMap *bm, uint64_t index, bool value);
 
 #endif // BITMAP_H

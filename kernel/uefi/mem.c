@@ -40,10 +40,10 @@ static void _ReservePage(void *addr) {
     return;
   }
 
-  bitmapSetVal(&(mem_info.MemBitMap), index, true);
-
-  mem_info.free_memory -= 4096;
-  mem_info.reserved_memory += 4096;
+  if (bitmapSetVal(&(mem_info.MemBitMap), index, true)) {
+    mem_info.free_memory -= 4096;
+    mem_info.reserved_memory += 4096;
+  }
 }
 
 // Not used for now, commenting it out first
@@ -67,10 +67,10 @@ static void _FreePage(void *addr) {
     return;
   }
 
-  bitmapSetVal(&(mem_info.MemBitMap), index, false);
-
-  mem_info.free_memory += 4096;
-  mem_info.used_memory -= 4096;
+  if (bitmapSetVal(&(mem_info.MemBitMap), index, false)) {
+    mem_info.free_memory += 4096;
+    mem_info.used_memory -= 4096;
+  }
 }
 
 static void _LockPage(void *addr) {
@@ -80,10 +80,10 @@ static void _LockPage(void *addr) {
     return;
   }
 
-  bitmapSetVal(&(mem_info.MemBitMap), index, true);
-
-  mem_info.free_memory -= 4096;
-  mem_info.used_memory += 4096;
+  if (bitmapSetVal(&(mem_info.MemBitMap), index, true)) {
+    mem_info.free_memory -= 4096;
+    mem_info.used_memory += 4096;
+  }
 }
 
 static void ReservePages(void *addr, size_t num_pages) {

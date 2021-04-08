@@ -51,6 +51,7 @@ void kmain(BootInfo *boot_info) {
 
   uint64_t fbBase = (uint64_t)boot_info->framebuffer->BaseAddress;
   uint64_t fbSize = (uint64_t)boot_info->framebuffer->BufferSize + 0x1000;
+  lockPages((void *)fbBase, fbSize / 0x1000 + 1);
   for (uint64_t t = fbBase; t < fbBase + fbSize; t += 0x1000) {
     pageTableManagerMapMemory(&ptm, (void *)t, (void *)t);
   }
