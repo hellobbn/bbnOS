@@ -10,9 +10,9 @@
 #ifndef MEM_H
 #define MEM_H
 
+#include "bitmap.h"
 #include "efi_mem.h"
 #include "types.h"
-#include "bitmap.h"
 
 /// A structure describing the whole memory structure for the kernel
 typedef struct MemDesc {
@@ -81,9 +81,8 @@ typedef struct PageDirEntry {
 } PageDirEntry;
 
 typedef struct PageTable {
-  PageDirEntry entries [512];
-}__attribute__((aligned(0x1000))) PageTable;
-
+  PageDirEntry entries[512];
+} __attribute__((aligned(0x1000))) PageTable;
 
 typedef struct PageMapIndexer {
   uint64_t PDP_i;
@@ -99,5 +98,6 @@ typedef struct PageTableManager {
 
 void initPageTableManager(PageTableManager *pml, PageTable *pml4_addr);
 
-void pageTableManagerMapMemory(PageTableManager *pml, void *virt_mem, void *phys_mem);
+void pageTableManagerMapMemory(PageTableManager *pml, void *virt_mem,
+                               void *phys_mem);
 #endif // MEM_H

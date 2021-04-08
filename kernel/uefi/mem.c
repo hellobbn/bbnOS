@@ -2,8 +2,8 @@
 #include "bitmap.h"
 #include "efi_mem.h"
 #include "fb.h"
-#include "types.h"
 #include "memop.h"
+#include "types.h"
 
 static MemDesc mem_info = {.free_memory = 0,
                            .reserved_memory = 0,
@@ -240,7 +240,8 @@ static PageTable *getNextPageTable(PageDirEntry *pde) {
   }
 }
 
-void pageTableManagerMapMemory(PageTableManager *ptm, void *virt_mem, void *phys_mem) {
+void pageTableManagerMapMemory(PageTableManager *ptm, void *virt_mem,
+                               void *phys_mem) {
   PageMapIndexer indexer;
   initPageMapIndexer(&indexer, (uint64_t)virt_mem);
 

@@ -30,11 +30,12 @@ void kmain(BootInfo *boot_info) {
          (uint64_t)&_KernelStart, (uint64_t)&_KernelEnd);
   lockPages(&_KernelStart, kernel_pages);
 
-  printf("==> %s: Summary: \n", __func__);
-  printf("Free: %lu KB \nUsed: %lu KB \nReserved: %lu KB\n",
+  printf("==> %s/mem: Summary: \n", __func__);
+  printf("    Free: %lu KB \n    Used: %lu KB \n    Reserved: %lu KB\n",
          getFreeMemSize() / 1024, getUsedMemSize() / 1024,
          getReservedMemSize() / 1024);
 
+  printf("==> %s/mem: Setting up paging\n", __func__);
   PageTable *pml4 = (PageTable *)requestPage();
   memset((void *)pml4, 0, 0x1000);
   PageTableManager ptm;
@@ -56,7 +57,7 @@ void kmain(BootInfo *boot_info) {
 
   asm("mov %0, %%cr3" : : "r"(pml4));
 
-  printf("==> Paging done \n");
+  printf("==> %s/mem: Paging set up ^_^\n", __func__);
 
   while (1) {
   }
