@@ -118,7 +118,7 @@ endif
 ## rules
 
 # all
-all: all_aval_img
+all: img
 
 # (Optional QEMU)
 ifeq (${UEFI_KERNEL}, false)
@@ -159,15 +159,12 @@ endif
 else
 	dd if=/dev/zero of=${IMG_OUT} bs=512 count=93750
 	mkfs.vfat ${IMG_OUT}
-	sudo mount -o loop ${IMG_OUT} ${MOUNT_POINT}
-	sudo mkdir -p ${MOUNT_POINT}/EFI/BOOT
-	sudo cp ${UEFI_BOOT_IMG} ${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI
-	# sudo cp startup.nsh ${MOUNT_POINT}
-	sudo cp ${KERNEL} ${MOUNT_POINT}
-
-	# Move the font to img
-	sudo cp ${RESOURCE_DIR}/default_font.psf ${MOUNT_POINT}
-	sudo umount ${MOUNT_POINT}
+	mmd -i ${IMG_OUT} ::/EFI
+	mmd -i ${IMG_OUT} ::/EFI/BOOT
+	mcopy -i ${IMG_OUT} ${UEFI_BOOT_IMG} ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -i ${IMG_OUT} ${KERNEL} ::
+# Move the font to img
+	mcopy -i ${IMG_OUT} ${RESOURCE_DIR}/default_font.psf ::
 endif
 
 ifeq ($(UEFI_KERNEL), false)
