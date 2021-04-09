@@ -80,10 +80,8 @@ UEFI_LOADER = ${GNUEFI_BUILD_DIR}/uefi_main.efi
 endif
 
 # For kernel
-ifeq (${UEFI_KERNEL}, false)
 KERN_ASMS		= ${wildcard ${KERNEL_DIR}/*.asm}
 KERN_ASM_OBJS	= ${patsubst %.asm, ${BUILD_DIR}/%.obj, ${KERN_ASMS}}
-endif
 KERN_C			= ${wildcard ${KERNEL_DIR}/*.c}
 KERN_C_OBJS	    = ${patsubst %.c, ${BUILD_DIR}/%.o, ${KERN_C}}
 KERN_CXX    = ${wildcard ${KERNEL_DIR}/*.cpp}
@@ -193,7 +191,7 @@ endif
 ifeq ($(UEFI_KERNEL), false)
 ${KERNEL}: pre_build_kernel ${KERN_C_OBJS} ${KERN_ASM_OBJS}
 else
-${KERNEL}: pre_build_kernel ${KERN_C_OBJS} ${KERN_CXX_OBJS}
+${KERNEL}: pre_build_kernel ${KERN_C_OBJS} ${KERN_CXX_OBJS} ${KERN_ASM_OBJS}
 endif
 		${LD} ${LDFLAGS} -o ${KERNEL} ${KERN_ASM_OBJS} ${KERN_C_OBJS} ${KERN_CXX_OBJS}
 

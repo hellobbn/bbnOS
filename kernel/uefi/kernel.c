@@ -2,6 +2,7 @@
 #include "boot.h"
 #include "efi_mem.h"
 #include "fb.h"
+#include "gdt.h"
 #include "mem.h"
 #include "memop.h"
 #include "types.h"
@@ -10,8 +11,17 @@ extern uint64_t _KernelStart;
 extern uint64_t _KernelEnd;
 
 void kmain(BootInfo *boot_info) {
-  // Drawing Pixels in framebuffer
   initFb(boot_info->framebuffer, boot_info->psf1_font, 0xffffffff);
+
+  // Set up GDT
+  printf("==> %s: Setting Up GDT\n", __func__);
+  GDTDesc gdt_desc;
+  gdt_desc.size = sizeof(GDT) - 1;
+  gdt_desc.offset = (uint64_t)&DefaultGDT;
+  LoadGDT(&gdt_desc);
+  printf("<== %s: GDT Successfully loaded\n", __func__);
+
+  // Clear screen on demand
   // clearScreen();
 
   // Get total memory
@@ -26,7 +36,7 @@ void kmain(BootInfo *boot_info) {
   uint64_t kernel_size = (uint64_t)(&_KernelEnd) - (uint64_t)(&_KernelStart);
   uint64_t kernel_pages = (uint64_t)(kernel_size / 4096 + 1);
 
-  printf("%s/mem: Reserve Kernel address space: %08lX - %08lX\n", __func__,
+  printf("<== %s/mem: Reserve Kernel address space: %08lX - %08lX\n", __func__,
          (uint64_t)&_KernelStart, (uint64_t)&_KernelEnd);
   lockPages(&_KernelStart, kernel_pages);
 
@@ -58,7 +68,7 @@ void kmain(BootInfo *boot_info) {
 
   asm("mov %0, %%cr3" : : "r"(pml4));
 
-  printf("==> %s/mem: Paging set up ^_^\n", __func__);
+  printf("<== %s/mem: Paging set up ^_^\n", __func__);
 
   while (1) {
   }
