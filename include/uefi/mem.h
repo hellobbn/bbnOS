@@ -42,6 +42,9 @@ void readEFIMemoryMap(EFI_MEMORY_DESCRIPTOR *mmap, size_t mmap_size,
 uint64_t getMemSize(EFI_MEMORY_DESCRIPTOR *mmap, uint64_t num_mmap_entries,
                     uint64_t mmap_desc_size);
 
+/// Page size in bytes, 4MiB or 4KiB
+#define PAGE_SIZE 4096
+
 /// Page Directory Entry Descriptor
 typedef struct PageDirEntry {
   /// Present bit: If set, the page is present

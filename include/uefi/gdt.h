@@ -53,6 +53,17 @@ typedef struct GDT {
 
 extern GDT DefaultGDT;
 
+/// Defines of offset in GDT
+/// NOTE: This need to be CHANGED each time GDT is changed
+///{
+#define SEG_OFFSET_NULL 0x0
+#define SEG_OFFSET_KERNEL_CODE 0x8
+#define SEG_OFFSET_KERNEL_DATA 0x10
+#define SEG_OFFSET_USER_NULL 0x18
+#define SEG_OFFSET_USER_CODE 0x20
+#define SEG_OFFSET_USER_DATA 0x28
+///}
+
 extern void LoadGDT(GDTDesc *gdt_desc);
 
 #endif // GDT_H

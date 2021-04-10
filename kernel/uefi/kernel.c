@@ -6,6 +6,7 @@
 #include "mem.h"
 #include "memop.h"
 #include "types.h"
+#include "idt.h"
 
 extern uint64_t _KernelStart;
 extern uint64_t _KernelEnd;
@@ -69,6 +70,10 @@ void kmain(BootInfo *boot_info) {
   asm("mov %0, %%cr3" : : "r"(pml4));
 
   printf("<== %s/mem: Paging set up ^_^\n", __func__);
+
+  printf("==> %s:/int: Prapare Interrupts...\n", __func__);
+  prepareInterrupts();
+  printf("<== %s/int: Interrupts Set up.\n", __func__);
 
   while (1) {
   }
