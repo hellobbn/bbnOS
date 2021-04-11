@@ -1,5 +1,8 @@
 #include "interrupts.h"
 #include "fb.h"
+#include "idt.h"
+#include "kmisc.h"
+#include "io.h"
 
 char *PROCESSOR_EXCEPTION_STRING[NUM_EXCEPTIONS] = {
     "#DE Devide Error",
@@ -25,10 +28,28 @@ char *PROCESSOR_EXCEPTION_STRING[NUM_EXCEPTIONS] = {
     "#VE Virtualization Exception",
     "#CP Control Protection Exception"};
 
-__attribute__((interrupt)) void exHandlerPF(struct interrupt_frame *frame) {
-
-  printf("PageFault detected.\n");
-
+__attribute((interrupt)) void exHandlerDF(struct interrupt_frame *frame) {
+  printf("#DF Double Fault Detected");
   while (true) {
   }
+}
+
+__attribute((interrupt)) void exHandlerGP(struct interrupt_frame *frame) {
+  kPanic("#GP General Protection detected.\n");
+  while (true) {
+  }
+}
+
+__attribute__((interrupt)) void exHandlerPF(struct interrupt_frame *frame) {
+  kPanic("#PF Page Fault detected.\n");
+  while (true) {
+  }
+}
+
+__attribute__((interrupt)) void intHandlerKB(struct interrupt_frame *frame) {
+  printf("Keyboard Pressed\n");
+
+  uint8_t scancode = inb(0x60);
+
+  picSendEOI(IRQ_KEYBOARD_INT);
 }

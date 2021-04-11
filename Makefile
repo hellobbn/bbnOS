@@ -61,6 +61,8 @@ C_FLAGS += -m32
 ASM_K_FLAGS += -f elf32
 endif
 
+C_FLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function
+
 CXX_FLAGS = ${C_FLAGS}
 
 ## This Program

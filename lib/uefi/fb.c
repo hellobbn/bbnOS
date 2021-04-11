@@ -8,28 +8,35 @@
 static Framebuffer *fb = NULL;
 static PSF1_FONT *ft = NULL;
 static uint64_t Color = 0xffffffff;
+static CursorPosition cursor_position = {
+  .cursor_X = 0,
+  .cursor_Y = 0,
+};
 
-int initFb(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color) {
+int fbInit(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color) {
   fb = in_fb;
   ft = in_ft;
   Color = color;
 
+  cursor_position.cursor_X = 0;
+  cursor_position.cursor_Y = 0;
+
   return FB_OP_SUCCESS;
 }
 
-int setFB(Framebuffer *in_fb) {
+int fbSetFb(Framebuffer *in_fb) {
   fb = in_fb;
 
   return FB_OP_SUCCESS;
 }
 
-int setFont(PSF1_FONT *in_ft) {
+int fbSetFont(PSF1_FONT *in_ft) {
   ft = in_ft;
 
   return FB_OP_SUCCESS;
 }
 
-void setColor(uint64_t color) { Color = color; }
+void fbSetColor(uint64_t color) { Color = color; }
 
 void _setColorOfPixel(uint64_t color, unsigned int x, unsigned int y) {
   *(unsigned int *)((unsigned int *)fb->BaseAddress + x +
@@ -58,13 +65,18 @@ void _fbPutChar(uint64_t color, char chr, unsigned int x, unsigned int y) {
 
 #define fbPutChar(c, x, y) (_fbPutChar(Color, c, x, y))
 
+void fbResetCursor(size_t x, size_t y) {
+  cursor_position.cursor_X = x;
+  cursor_position.cursor_Y = y;
+}
+
 // BUG: This implementation seems to have bugs.
 void fb_putchar(char c) {
   if (!fb || !ft) {
     return;
   }
-  static unsigned int x_pos = 0;
-  static unsigned int y_pos = 0;
+  size_t x_pos = cursor_position.cursor_X;
+  size_t y_pos = cursor_position.cursor_Y;
 
   // If secondly prints, clear first.
   // If this byte is set, the next char printed will clear the line
@@ -122,12 +134,15 @@ void fb_putchar(char c) {
     }
     x_pos = 0;
   }
+
+  cursor_position.cursor_X = x_pos;
+  cursor_position.cursor_Y = y_pos;
 }
 
-void clearScreen(void) {
+void fbClearScreen(uint32_t color) {
   for (size_t y = 0; y < fb->Height; y ++) {
     for (size_t x = 0; x < fb->PixelsPerScanline; x ++) {
-      _setColorOfPixel(0xff000000, x, y);
+      _setColorOfPixel(color, x, y);
     }
   }
 }

@@ -55,6 +55,57 @@ typedef struct IDTR {
   uint64_t base;
 } __attribute((packed)) IDTR;
 
+/// Send EOI to parent/slave PIC
+void picSendEOI(int irq);
+
+/// IRQ set and clear mask
+///{
+void irqSetMask(unsigned char IRQline);
+void irqClearMask(unsigned char IRQline);
+///}
+
+/// Definition of IRQs
+enum IRQ_NUM {
+  IRQ_PROGRAMMABLE_INT_TIMER_INT = 0,
+  IRQ_KEYBOARD_INT = 1,
+  IRQ_CASCADE = 2,
+  IRQ_COM2 = 3,
+  IRQ_COM1 = 4,
+  IRQ_LPT2 = 5,
+  IRQ_FLOPPY_DISK = 6,
+  IRQ_LPT1 = 7,
+  IRQ_CMOS_REALTIME_CLOCK = 8,
+  IRQ_PERIPHERALS_LEGACYSCSI_NIC = 9,
+  IRQ_PERIPHERALS_SCSI_NIC_1 = 10,
+  IRQ_PERIPHERALS_SCSI_NIC_2 = 11,
+  IRQ_PS2_MOUSE = 12,
+  IRQ_FPU_COPROCESSOR_INTERPROCESSOR = 13,
+  IRQ_PRIMARY_ATA_DISK = 14,
+  IRQ_SECONDARY_ATA_DISK = 15,
+};
+
+/// PIC (8259) Definitions
+///{
+#define PIC1 0x20
+#define PIC2 0xA0
+#define PIC1_COMMAND PIC1
+#define PIC1_DATA (PIC1 + 1)
+#define PIC2_COMMAND PIC2
+#define PIC2_DATA (PIC2 + 1)
+
+#define ICW1_INIT 0x10
+#define ICW1_ICW4 0x01
+#define ICW4_8086 0x01
+
+#define PIC_EOI 0x20
+
+#define PIC_MASTER_INT_START 0x20
+#define PIC_SLAVE_INT_START 0x28
+
+#define PIC_GET_INT_VECTOR(IRQ)                                                \
+  (IRQ < 8 ? (PIC_MASTER_INT_START + IRQ) : (PIC_SLAVE_INT_START + IRQ))
+///}
+
 /// Prepare the interrupt handlers. Assign each exception and (user defined)
 /// interrupt the defined handler
 void prepareInterrupts();

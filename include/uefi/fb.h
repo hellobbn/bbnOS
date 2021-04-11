@@ -32,6 +32,11 @@ typedef struct {
   unsigned int PixelsPerScanline;
 } Framebuffer;
 
+typedef struct CursorPosition {
+  size_t cursor_X;
+  size_t cursor_Y;
+} CursorPosition;
+
 /// PSF1 Font Related structures and Macros
 ///{
 #define PSF1_MAGIC0 0x36
@@ -53,14 +58,14 @@ typedef struct {
 /// \param fb The structure describing the framebuffer
 /// \param ft The font to be used in the printing function
 /// \return Whether the initialization is successful, FB_OP_SUCCESS if success
-int initFb(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color);
+int fbInit(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color);
 
 /// This **UNSAFE** function sets the framebuffer to the parameter, used for
 /// purposes only.
 ///
 /// \param fb The target framebuffer we are to set
 /// \return FB_OP_SUCCESS on success, FB_OP_FAIL on failure
-int setFB(Framebuffer *fb);
+int fbSetFb(Framebuffer *fb);
 
 /// This function changes the font of the framebuffer. Note that this will NOT
 /// changes the fonts which are already printed in the framebuffer. Only newly
@@ -68,13 +73,13 @@ int setFB(Framebuffer *fb);
 ///
 /// \param ft The font to set to
 /// \return FB_OP_SUCCESS on success, FB_OP_FAIL on failure
-int setFont(PSF1_FONT *ft);
+int fbSetFont(PSF1_FONT *ft);
 
 /// Set the color of the font in the framebuffer. This only affects newly
 /// printed fonts
 ///
 /// \param color A 64-bit color info
-void setColor(uint64_t color);
+void fbSetColor(uint64_t color);
 
 /// The movable putchar function. Print a character to screen and move to next
 /// position
@@ -85,6 +90,13 @@ void fb_putchar(char c);
 /// Print a string in formatted style. Use it as normal printf function.
 int printf(const char *format, ...);
 
+/// Reset the cursor position to the given position
+///
+/// \param x The x (colomn) of the cursor
+/// \param y The y (row) of the cursor
+/// \note This function is unsafe
+void fbResetCursor(size_t x, size_t y);
+
 /// Writes a character to the framebuffer, we moves the cursor alongside.
 /// This actually calls the functions in fb.c.
 /// FIXME: This actually takes much context switch time, we need to clean them
@@ -92,6 +104,8 @@ int printf(const char *format, ...);
 ///
 #define putchar(c) (fb_putchar(c))
 
-/// Clear the whole screen
-void clearScreen(void); 
+/// Clear the whole screen with a color
+///
+/// \param color The color to set
+void fbClearScreen(uint32_t color);
 #endif // FRAMEBUFFER_H

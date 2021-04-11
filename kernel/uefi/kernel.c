@@ -12,7 +12,7 @@ extern uint64_t _KernelStart;
 extern uint64_t _KernelEnd;
 
 void kmain(BootInfo *boot_info) {
-  initFb(boot_info->framebuffer, boot_info->psf1_font, 0xffffffff);
+  fbInit(boot_info->framebuffer, boot_info->psf1_font, 0xffffffff);
 
   // Set up GDT
   printf("==> %s: Setting Up GDT\n", __func__);

@@ -6,8 +6,93 @@
 #include "fb.h"
 #include "gdt.h"
 #include "interrupts.h"
+#include "io.h"
 #include "mem.h"
 #include "types.h"
+
+static void remapPIC(int offset_1, int offset_2) {
+  // The process:
+  // 1. write ICW1 to 20H / A0H
+  // 2. write ICW2 to 21H / A1H
+  // 3. write ICW3 to A1H / A2H
+  // 4. write ICW4 to 21H / A1H
+
+  uint8_t a1, a2;
+  a1 = inb(PIC1_DATA);
+  io_wait();
+  a2 = inb(PIC2_DATA);
+  io_wait();
+
+  // master, ICW1
+  outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
+  io_wait();
+  // slave, ICW 1
+  outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
+  io_wait();
+
+  // IRQ0 -> INT0x20, master, ICW2
+  outb(PIC1_DATA, offset_1);
+  io_wait();
+  // IRQ8 -> INT0x28, master, ICW2
+  outb(PIC2_DATA, offset_2);
+  io_wait();
+
+  // master, ICW3
+  outb(PIC1_DATA, 0x04);
+  io_wait();
+  // slave, ICW3
+  outb(PIC2_DATA, 0x02);
+  io_wait();
+
+  // mater, ICW4
+  outb(PIC1_DATA, ICW4_8086);
+  // slave, ICW4
+  outb(PIC2_DATA, ICW4_8086);
+
+  // master, clock only, disable others
+  outb(PIC1_DATA, a1);
+  io_wait();
+  // slave, all int disabled
+  outb(PIC2_DATA, a2);
+
+  return;
+}
+
+void irqSetMask(unsigned char IRQline) {
+  uint16_t port;
+  uint8_t value;
+
+  if (IRQline < 8) {
+    port = PIC1_DATA;
+  } else {
+    port = PIC2_DATA;
+    IRQline -= 8;
+  }
+  value = inb(port) | (1 << IRQline);
+  outb(port, value);
+}
+
+void irqClearMask(unsigned char IRQline) {
+  uint16_t port;
+  uint8_t value;
+
+  if (IRQline < 8) {
+    port = PIC1_DATA;
+  } else {
+    port = PIC2_DATA;
+    IRQline -= 8;
+  }
+  value = inb(port) & ~(1 << IRQline);
+  outb(port, value);
+}
+
+void picSendEOI(int irq) {
+  if (irq >= 8) {
+    outb(PIC2_COMMAND, PIC_EOI);
+  } else {
+    outb(PIC1_COMMAND, PIC_EOI);
+  }
+}
 
 /// Set the offset field of the IDT descriptor (IDT Entry)
 ///
@@ -54,6 +139,8 @@ static void IntAssignFunc(uint64_t index,
 }
 
 void prepareInterrupts() {
+  remapPIC(PIC_MASTER_INT_START, PIC_SLAVE_INT_START);
+
   size_t idt_size = IDT_ENTRIES * sizeof(IDTDesc);
   if (idt_size > PAGE_SIZE) {
     printf("  %s: PANIC: For now we cannot allocate a continous region with "
@@ -68,7 +155,17 @@ void prepareInterrupts() {
   idtr.limit = idt_size - 1;
   idtr.base = (uint64_t)requestPage();
 
+  IntAssignFunc(EX_DOUBLE_FAULT, exHandlerDF);
+  IntAssignFunc(EX_GENERAL_PROTECTION, exHandlerGP);
   IntAssignFunc(EX_PAGE_FAULT, exHandlerPF);
 
   asm("lidt %0" : : "m"(idtr));
+
+  IntAssignFunc(PIC_GET_INT_VECTOR(IRQ_KEYBOARD_INT), intHandlerKB);
+  for (int i = 0; i < 16; i ++) {
+    irqSetMask(i);
+  }
+  irqClearMask(IRQ_KEYBOARD_INT);
+
+  asm("sti");
 }
