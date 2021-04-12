@@ -108,4 +108,7 @@ void fbResetCursor(size_t x, size_t y);
 ///
 /// \param color The color to set
 void fbClearScreen(uint32_t color);
+
+/// Do a backspace
+void fbClearChar();
 #endif // FRAMEBUFFER_H

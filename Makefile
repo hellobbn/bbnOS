@@ -168,9 +168,9 @@ else
 endif
 
 ifeq ($(UEFI_KERNEL), false)
-all_aval_img: clean prepare ${BOOT} ${LOADER} ${KERNEL}
+all_aval_img: prepare ${BOOT} ${LOADER} ${KERNEL}
 else
-all_aval_img: clean prepare gnuefi ${UEFI_BOOT_IMG} ${KERNEL}
+all_aval_img: prepare gnuefi ${UEFI_BOOT_IMG} ${KERNEL}
 endif
 
 ifeq (${UEFI_KERNEL}, false)

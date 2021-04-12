@@ -1,6 +1,11 @@
-///===- fb.c: Framebuffer operations ------------------------------------===///
+///===- fb.c: Framebuffer operations -------------------------------------===///
 /// Framebuffer Implementation
-///===-------------------------------------------------------------------===///
+///===--------------------------------------------------------------------===///
+//
+// TODO: Implement cursor move function
+// TODO: Implement a bitmap indicating which character has been rendered
+//
+//===---------------------------------------------------------------------===///
 
 #include "fb.h"
 #include "types.h"
@@ -9,8 +14,8 @@ static Framebuffer *fb = NULL;
 static PSF1_FONT *ft = NULL;
 static uint64_t Color = 0xffffffff;
 static CursorPosition cursor_position = {
-  .cursor_X = 0,
-  .cursor_Y = 0,
+    .cursor_X = 0,
+    .cursor_Y = 0,
 };
 
 int fbInit(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color) {
@@ -96,7 +101,8 @@ void fb_putchar(char c) {
     x_pos = 0;
     y_pos += 16;
     if (clear == 1) {
-      for (unsigned int curr_y_pos = y_pos; curr_y_pos < y_pos + 16; curr_y_pos++) {
+      for (unsigned int curr_y_pos = y_pos; curr_y_pos < y_pos + 16;
+           curr_y_pos++) {
         for (x_pos = 0; x_pos < fb->Width; x_pos++) {
           _setColorOfPixel(0xff000000, x_pos, curr_y_pos);
         }
@@ -112,7 +118,8 @@ void fb_putchar(char c) {
     x_pos = 0;
     y_pos += 16;
     if (clear == 1) {
-      for (unsigned int curr_y_pos = y_pos; curr_y_pos < y_pos + 16; curr_y_pos++) {
+      for (unsigned int curr_y_pos = y_pos; curr_y_pos < y_pos + 16;
+           curr_y_pos++) {
         for (x_pos = 0; x_pos < fb->Width; x_pos++) {
           _setColorOfPixel(0xff000000, x_pos, curr_y_pos);
         }
@@ -139,9 +146,30 @@ void fb_putchar(char c) {
   cursor_position.cursor_Y = y_pos;
 }
 
+void fbClearChar() {
+  if (cursor_position.cursor_X < 8) {
+    if (cursor_position.cursor_Y < 16) {
+      return;
+    }
+    cursor_position.cursor_X = fb->Width - 8;
+    cursor_position.cursor_Y -= 16;
+  } else {
+    cursor_position.cursor_X -= 8;
+  }
+
+  for (unsigned long y_off = cursor_position.cursor_Y;
+       y_off < cursor_position.cursor_Y + 16; y_off++) {
+    for (unsigned long x_off = cursor_position.cursor_X;
+         x_off < cursor_position.cursor_X + 8; x_off++) {
+      // This checks if the current position should be "1" (a light pixel)
+      _setColorOfPixel(0, x_off, y_off);
+    }
+  }
+}
+
 void fbClearScreen(uint32_t color) {
-  for (size_t y = 0; y < fb->Height; y ++) {
-    for (size_t x = 0; x < fb->PixelsPerScanline; x ++) {
+  for (size_t y = 0; y < fb->Height; y++) {
+    for (size_t x = 0; x < fb->PixelsPerScanline; x++) {
       _setColorOfPixel(color, x, y);
     }
   }
