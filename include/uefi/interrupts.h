@@ -56,6 +56,7 @@ __attribute__((interrupt)) void exHandlerPF(struct interrupt_frame *frame);
 /// Interrupt Handlers
 ///{
 __attribute__((interrupt)) void intHandlerKB(struct interrupt_frame *frame);
+__attribute((interrupt)) void intHandlePS2Mouse(struct interrupt_frame *frame);
 ///}
 
 #endif // INTERRUPTS_H

@@ -44,7 +44,7 @@ LD				= ld.lld
 OBJCOPY   = objcopy
 ASM_B_FLAGS		= -I ${INC_B_DIR}
 ASM_K_FLAGS		= -I ${INC_K_DIR}
-C_FLAGS			= -c -I ${INC_K_DIR} -fno-builtin -Wall -Wextra -fno-stack-protector
+C_FLAGS			= -c -I ${INC_K_DIR} -fno-builtin -Wall -Wextra -fno-stack-protector -g
 
 ifeq ($(UEFI_KERNEL), false)
 LDFLAGS			= -T ${SCRIPT_DIR}/link.ld
@@ -135,6 +135,14 @@ qemu: img
 		-drive if=pflash,format=raw,unit=0,file=./resources/OVMF_CODE.fd \
 		-drive if=pflash,format=raw,unit=1,file=./resources/OVMF_VARS.fd \
 		-m 256M -cpu qemu64
+
+qemu_gdb: img
+	@echo
+	@echo "==> Starting qemu"
+	qemu-system-x86_64 -drive file=${IMG_OUT} \
+		-drive if=pflash,format=raw,unit=0,file=./resources/OVMF_CODE.fd \
+		-drive if=pflash,format=raw,unit=1,file=./resources/OVMF_VARS.fd \
+		-m 256M -cpu qemu64 -s -S
 endif
 
 # build the image

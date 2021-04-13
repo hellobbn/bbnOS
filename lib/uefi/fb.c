@@ -10,16 +10,24 @@
 #include "fb.h"
 #include "types.h"
 
-static Framebuffer *fb = NULL;
 static PSF1_FONT *ft = NULL;
 static uint64_t Color = 0xffffffff;
 static CursorPosition cursor_position = {
     .cursor_X = 0,
     .cursor_Y = 0,
 };
+FbInfo fb_info = {.BaseAddress = 0,
+                  .BufferSize = 0,
+                  .Height = 0,
+                  .PixelsPerScanline = 0,
+                  .Width = 0};
 
 int fbInit(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color) {
-  fb = in_fb;
+  fb_info.BaseAddress = in_fb->BaseAddress;
+  fb_info.BufferSize = in_fb->BufferSize;
+  fb_info.Height = in_fb->Height;
+  fb_info.Width = in_fb->Width;
+  fb_info.PixelsPerScanline = in_fb->PixelsPerScanline;
   ft = in_ft;
   Color = color;
 
@@ -30,7 +38,11 @@ int fbInit(Framebuffer *in_fb, PSF1_FONT *in_ft, uint64_t color) {
 }
 
 int fbSetFb(Framebuffer *in_fb) {
-  fb = in_fb;
+  fb_info.BaseAddress = in_fb->BaseAddress;
+  fb_info.BufferSize = in_fb->BufferSize;
+  fb_info.Height = in_fb->Height;
+  fb_info.Width = in_fb->Width;
+  fb_info.PixelsPerScanline = in_fb->PixelsPerScanline;
 
   return FB_OP_SUCCESS;
 }
@@ -41,15 +53,23 @@ int fbSetFont(PSF1_FONT *in_ft) {
   return FB_OP_SUCCESS;
 }
 
-void fbSetColor(uint64_t color) { Color = color; }
+void fbSetColor(uint32_t color) { Color = color; }
 
-void _setColorOfPixel(uint64_t color, unsigned int x, unsigned int y) {
-  *(unsigned int *)((unsigned int *)fb->BaseAddress + x +
-                    (y * fb->PixelsPerScanline)) = color;
+void _setColorOfPixel(uint32_t color, unsigned int x, unsigned int y) {
+  if (x >= fb_info.Width || y >= fb_info.Height) {
+    return;
+  }
+
+  *(unsigned int *)((uint32_t *)fb_info.BaseAddress + x +
+                    (y * fb_info.PixelsPerScanline)) = color;
 }
 
 void _fbPutChar(uint64_t color, char chr, unsigned int x, unsigned int y) {
-  if (!fb || !ft) {
+  if (!ft) {
+    return;
+  }
+
+  if (x > fb_info.Width - 8 || y > fb_info.Height - 16) {
     return;
   }
 
@@ -60,7 +80,7 @@ void _fbPutChar(uint64_t color, char chr, unsigned int x, unsigned int y) {
     for (unsigned long x_off = x; x_off < x + 8; x_off++) {
       // This checks if the current position should be "1" (a light pixel)
       if ((*font_ptr & (0b10000000 >> (x_off - x))) > 0) {
-        _setColorOfPixel(color, x_off, y_off);
+        _setColorOfPixel(0xffffffff, x_off, y_off);
       }
     }
     // After each line, go ahead
@@ -77,7 +97,7 @@ void fbResetCursor(size_t x, size_t y) {
 
 // BUG: This implementation seems to have bugs.
 void fb_putchar(char c) {
-  if (!fb || !ft) {
+  if (!ft) {
     return;
   }
   size_t x_pos = cursor_position.cursor_X;
@@ -87,11 +107,12 @@ void fb_putchar(char c) {
   // If this byte is set, the next char printed will clear the line
   static int clear = 0;
 
-  if (x_pos > fb->Width || y_pos > fb->Height - 16) {
-    return;
+  if (x_pos > fb_info.Width || y_pos > fb_info.Height - 16) {
+    x_pos = 0;
+    y_pos = 0;
   }
 
-  if (c == 0x08 && x_pos) {
+  if (c == 0x08 && x_pos > 8) {
     x_pos -= 8;
   } else if (c == 0x09) {
     x_pos = (x_pos + 64) & ~(64 - 1);
@@ -103,8 +124,8 @@ void fb_putchar(char c) {
     if (clear == 1) {
       for (unsigned int curr_y_pos = y_pos; curr_y_pos < y_pos + 16;
            curr_y_pos++) {
-        for (x_pos = 0; x_pos < fb->Width; x_pos++) {
-          _setColorOfPixel(0xff000000, x_pos, curr_y_pos);
+        for (x_pos = 0; x_pos < fb_info.Width; x_pos++) {
+          _setColorOfPixel(0x00000000, x_pos, curr_y_pos);
         }
       }
       x_pos = 0;
@@ -114,13 +135,14 @@ void fb_putchar(char c) {
     x_pos += 8;
   }
 
-  if (x_pos >= fb->Width) {
+  if (x_pos >= fb_info.Width - 8) {
     x_pos = 0;
     y_pos += 16;
     if (clear == 1) {
-      for (unsigned int curr_y_pos = y_pos; curr_y_pos < y_pos + 16;
+      for (unsigned int curr_y_pos = y_pos;
+           curr_y_pos < y_pos + 16 && curr_y_pos < fb_info.Height;
            curr_y_pos++) {
-        for (x_pos = 0; x_pos < fb->Width; x_pos++) {
+        for (x_pos = 0; x_pos < fb_info.Width; x_pos++) {
           _setColorOfPixel(0xff000000, x_pos, curr_y_pos);
         }
       }
@@ -128,18 +150,23 @@ void fb_putchar(char c) {
     }
   }
 
-  if (y_pos >= fb->Height - 16) {
+  if (y_pos >= fb_info.Height - 16) {
     x_pos = 0;
     y_pos = 0;
-    clear = 1;
+    clear += 1;
 
     // do a clear now
     for (unsigned int curr_y_pos = y_pos; curr_y_pos < 16; curr_y_pos++) {
-      for (x_pos = 0; x_pos < fb->Width; x_pos++) {
+      for (x_pos = 0; x_pos < fb_info.Width; x_pos++) {
         _setColorOfPixel(0xff000000, x_pos, curr_y_pos);
       }
     }
     x_pos = 0;
+  }
+
+  if (x_pos > fb_info.Width - 8 || y_pos > fb_info.Height - 16) {
+    x_pos = 0;
+    y_pos = 0;
   }
 
   cursor_position.cursor_X = x_pos;
@@ -151,7 +178,7 @@ void fbClearChar() {
     if (cursor_position.cursor_Y < 16) {
       return;
     }
-    cursor_position.cursor_X = fb->Width - 8;
+    cursor_position.cursor_X = fb_info.Width - 8;
     cursor_position.cursor_Y -= 16;
   } else {
     cursor_position.cursor_X -= 8;
@@ -168,8 +195,8 @@ void fbClearChar() {
 }
 
 void fbClearScreen(uint32_t color) {
-  for (size_t y = 0; y < fb->Height; y++) {
-    for (size_t x = 0; x < fb->PixelsPerScanline; x++) {
+  for (size_t y = 0; y < fb_info.Height; y++) {
+    for (size_t x = 0; x < fb_info.PixelsPerScanline; x++) {
       _setColorOfPixel(color, x, y);
     }
   }

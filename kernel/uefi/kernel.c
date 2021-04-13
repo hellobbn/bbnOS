@@ -7,6 +7,7 @@
 #include "memop.h"
 #include "types.h"
 #include "idt.h"
+#include "mouse.h"
 
 extern uint64_t _KernelStart;
 extern uint64_t _KernelEnd;
@@ -74,6 +75,10 @@ void kmain(BootInfo *boot_info) {
   printf("==> %s:/int: Prapare Interrupts...\n", __func__);
   prepareInterrupts();
   printf("<== %s/int: Interrupts Set up.\n", __func__);
+
+  while (true) {
+    ProcessMousePacket();
+  }
 
   while (1) {
   }

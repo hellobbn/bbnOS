@@ -9,6 +9,7 @@
 #include "io.h"
 #include "mem.h"
 #include "types.h"
+#include "mouse.h"
 
 static void remapPIC(int offset_1, int offset_2) {
   // The process:
@@ -89,9 +90,8 @@ void irqClearMask(unsigned char IRQline) {
 void picSendEOI(int irq) {
   if (irq >= 8) {
     outb(PIC2_COMMAND, PIC_EOI);
-  } else {
-    outb(PIC1_COMMAND, PIC_EOI);
   }
+  outb(PIC1_COMMAND, PIC_EOI);
 }
 
 /// Set the offset field of the IDT descriptor (IDT Entry)
@@ -139,6 +139,7 @@ static void IntAssignFunc(uint64_t index,
 }
 
 void prepareInterrupts() {
+  asm("cli");
   remapPIC(PIC_MASTER_INT_START, PIC_SLAVE_INT_START);
 
   size_t idt_size = IDT_ENTRIES * sizeof(IDTDesc);
@@ -161,11 +162,17 @@ void prepareInterrupts() {
 
   asm("lidt %0" : : "m"(idtr));
 
-  IntAssignFunc(PIC_GET_INT_VECTOR(IRQ_KEYBOARD_INT), intHandlerKB);
-  for (int i = 0; i < 16; i ++) {
+  for (int i = 0; i < 16; i++) {
     irqSetMask(i);
   }
+
+  IntAssignFunc(PIC_GET_INT_VECTOR(IRQ_KEYBOARD_INT), intHandlerKB);
+  IntAssignFunc(PIC_GET_INT_VECTOR(IRQ_PS2_MOUSE), intHandlePS2Mouse);
+  PS2MouseInit();
+
   irqClearMask(IRQ_KEYBOARD_INT);
+  irqClearMask(IRQ_CASCADE);
+  irqClearMask(IRQ_PS2_MOUSE);
 
   asm("sti");
 }

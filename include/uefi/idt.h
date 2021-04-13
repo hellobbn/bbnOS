@@ -103,11 +103,10 @@ enum IRQ_NUM {
 #define PIC_SLAVE_INT_START 0x28
 
 #define PIC_GET_INT_VECTOR(IRQ)                                                \
-  (IRQ < 8 ? (PIC_MASTER_INT_START + IRQ) : (PIC_SLAVE_INT_START + IRQ))
+  (IRQ < 8 ? (PIC_MASTER_INT_START + IRQ) : (PIC_SLAVE_INT_START + IRQ - 8))
 ///}
 
 /// Prepare the interrupt handlers. Assign each exception and (user defined)
 /// interrupt the defined handler
 void prepareInterrupts();
-
 #endif // IDT_H

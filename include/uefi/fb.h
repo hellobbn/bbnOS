@@ -37,6 +37,14 @@ typedef struct CursorPosition {
   size_t cursor_Y;
 } CursorPosition;
 
+typedef struct FbInfo {
+  void *BaseAddress;
+  size_t BufferSize;
+  unsigned int Width;
+  unsigned int Height;
+  unsigned int PixelsPerScanline;
+} FbInfo;
+
 /// PSF1 Font Related structures and Macros
 ///{
 #define PSF1_MAGIC0 0x36
@@ -79,7 +87,7 @@ int fbSetFont(PSF1_FONT *ft);
 /// printed fonts
 ///
 /// \param color A 64-bit color info
-void fbSetColor(uint64_t color);
+void fbSetColor(uint32_t color);
 
 /// The movable putchar function. Print a character to screen and move to next
 /// position
@@ -111,4 +119,14 @@ void fbClearScreen(uint32_t color);
 
 /// Do a backspace
 void fbClearChar();
+
+/// Verbose print a char to screen, with specified color, char, and position
+///
+/// \param color The color of the character
+/// \param chr The character
+/// \param x The x position of the character
+/// \param y The y position of the character
+void _fbPutChar(uint64_t color, char chr, unsigned int x, unsigned int y);
+
+extern FbInfo fb_info;
 #endif // FRAMEBUFFER_H
