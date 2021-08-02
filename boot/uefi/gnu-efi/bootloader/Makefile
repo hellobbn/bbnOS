@@ -47,6 +47,7 @@ LINUX_HEADERS	= /usr/src/sys/build
 CPPFLAGS	+= -D__KERNEL__ -I$(LINUX_HEADERS)/include
 CRTOBJS		= ../gnuefi/crt0-efi-$(ARCH).o
 
+LD		:= $(prefix)$(CROSS_COMPILE)ld.bfd
 LDSCRIPT	= $(TOPDIR)/gnuefi/elf_$(ARCH)_efi.lds
 ifneq (,$(findstring FreeBSD,$(OS)))
 LDSCRIPT	= $(TOPDIR)/gnuefi/elf_$(ARCH)_fbsd_efi.lds
