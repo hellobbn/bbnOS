@@ -84,7 +84,25 @@ void kmain(BootInfo *boot_info) {
   }
 }
 
-void kmain_multiboot() {
+// The fixed part of the boot information
+struct fixed_part {
+  uint32_t total_size;
+  uint32_t reserved;
+};
+
+#include "multiboot.h"
+#include <stdint.h>
+
+void kmain_multiboot(uint32_t magic, uint32_t addr) {
+  if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
+    return;
+  }
+  uint64_t acaddr = (uint64_t)addr;
+
+  struct fixed_part *part = (struct fixed_part *)(uint64_t)acaddr;
+  struct multiboot_tag *tag;
+  tag = (struct multiboot_tag *)((uint64_t)part + 8);
+
   while (1) {
   }
 }

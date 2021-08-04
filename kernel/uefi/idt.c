@@ -8,8 +8,8 @@
 #include "interrupts.h"
 #include "io.h"
 #include "mem.h"
-#include "types.h"
 #include "mouse.h"
+#include "types.h"
 
 static void remapPIC(int offset_1, int offset_2) {
   // The process:

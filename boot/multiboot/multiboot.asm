@@ -1,16 +1,25 @@
-section .multiboot_header_back
-header_start:
-  dd 0xE85250D6                   ; The magic number
-  dd 0                            ; Architecture: protected mode i386
-  dd header_end - header_start    ; Header length
+extern kmain_multiboot
 
-  ; Checksum
-  dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start))
+bits 32
+section .text
 
-  ; Other optional multiboot tags
+global multiboot_entry
+multiboot_entry:
+  mov esp, stack_end
 
-  ; Required end tag, type 0 and size 8
-  dw 0                            ; Type
-  dw 0                            ; flags
-  dd 8                            ; size
-header_end:
+  push dword 0
+  popf
+
+  mov edi, eax
+  mov esi, ebx
+
+  call kmain_multiboot
+
+multiboot_end:
+  jmp multiboot_end
+
+section .bss
+
+stack_begin:
+  resb 4096 ; reserve 4KiB size
+stack_end:
