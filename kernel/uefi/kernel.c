@@ -3,11 +3,11 @@
 #include "efi_mem.h"
 #include "fb.h"
 #include "gdt.h"
+#include "idt.h"
 #include "mem.h"
 #include "memop.h"
-#include "types.h"
-#include "idt.h"
 #include "mouse.h"
+#include "types.h"
 
 extern uint64_t _KernelStart;
 extern uint64_t _KernelEnd;
@@ -80,6 +80,11 @@ void kmain(BootInfo *boot_info) {
     ProcessMousePacket();
   }
 
+  while (1) {
+  }
+}
+
+void kmain_multiboot() {
   while (1) {
   }
 }
